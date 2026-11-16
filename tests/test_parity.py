@@ -689,3 +689,111 @@ def test_initscript_when_user_content_then_file_kept(tmp_path):
     initscript.update(tmp_path)
     initscript.update(tmp_path, remove=True)
     assert "mine" in (tmp_path / "initScript.py").read_text()
+
+
+def _stale_copy(data, root, ext_id):
+    """Add an old-version copy of Tool.py that the log lists only under hashes."""
+    old = data / "Scripts" / "Old Tool.py"
+    old.write_text("print('old version')\n")
+    log = legacy.log_path(data, ext_id)
+    record = json.loads(log.read_text().splitlines()[0])
+    record["hashes"] = {**record.get("hashes", {}), str(old): "0" * 64}
+    log.write_text(json.dumps(record) + "\n")
+    return old
+
+
+def _project_with_old_tool(tmp_path):
+    root = _project(tmp_path / "proj-a")
+    (root / "Scripts").mkdir(exist_ok=True)
+    (root / "Scripts" / "Old Tool.py").write_text("print('new')\n")
+    return root
+
+
+def test_install_project_when_recorded_stale_copy_then_moved_aside(data, tmp_path):
+    root = _project_with_old_tool(tmp_path)
+    _legacy(data, root, "com.example.proja", hashed=True)
+    old = _stale_copy(data, root, "com.example.proja")
+    bootstrap.install_project(root / "install.vfpy", data, requirements=NO_REQS)
+    assert old.exists()  # the new file now sits there
+    backups = list((data / "Extensions" / ".instamix" / "backup" / "com.example.proja").rglob("Old Tool.py"))
+    assert [b.read_text() for b in backups] == ["print('old version')\n"]
+    assert backups[0].as_posix().endswith("/Scripts/Old Tool.py")
+    log = legacy.log_path(data, "com.example.proja").read_text().splitlines()
+    assert json.loads(log[-1])["moved"]
+
+
+def test_install_project_when_already_migrated_then_stale_copy_moved_aside(data, tmp_path):
+    root = _project_with_old_tool(tmp_path)
+    _legacy(data, root, "com.example.proja", hashed=True)
+    old = _stale_copy(data, root, "com.example.proja")
+    log = legacy.log_path(data, "com.example.proja")
+    with log.open("a") as stream:
+        stream.write(json.dumps({"action": "uninstall", "id": "com.example.proja", "migrated_to": "fontlab-instamix"}) + "\n")
+    assert legacy.installed(data, "com.example.proja") is None
+    bootstrap.install_project(root / "install.vfpy", data, requirements=NO_REQS)
+    assert old.read_text() == "print('new')\n"
+    assert list((data / "Extensions" / ".instamix" / "backup").rglob("Old Tool.py"))
+
+
+def test_install_project_when_unrecorded_collision_then_refused(data, tmp_path):
+    root = _project_with_old_tool(tmp_path)
+    _legacy(data, root, "com.example.proja", hashed=True)
+    (data / "Scripts" / "Old Tool.py").write_text("mine\n")
+    with pytest.raises(Exception, match="refusing to overwrite"):
+        bootstrap.install_project(root / "install.vfpy", data, requirements=NO_REQS)
+    assert (data / "Scripts" / "Old Tool.py").read_text() == "mine\n"
+
+
+def test_legacy_restore_when_moved_then_files_back(data):
+    state = {"files": ["Scripts/a.py"]}
+    (data / "Scripts").mkdir(parents=True)
+    (data / "Scripts" / "a.py").write_text("x")
+    moved = legacy.move_aside(data, "com.example.x", state, {"Scripts/a.py"})
+    assert not (data / "Scripts" / "a.py").exists()
+    legacy.restore(moved)
+    assert (data / "Scripts" / "a.py").read_text() == "x"
+
+
+def _migrated_state(data, root):
+    _legacy(data, root, "com.example.proja", hashed=True)
+    old = _stale_copy(data, root, "com.example.proja")
+    log = legacy.log_path(data, "com.example.proja")
+    with log.open("a") as stream:
+        stream.write(json.dumps({"action": "uninstall", "id": "com.example.proja", "migrated_to": "fontlab-instamix"}) + "\n")
+    return old
+
+
+def test_install_project_when_rerun_from_migrated_state_then_one_backup_only(data, tmp_path):
+    root = _project_with_old_tool(tmp_path)
+    old = _migrated_state(data, root)
+    backups = data / "Extensions" / ".instamix" / "backup"
+    for _ in range(3):
+        bootstrap.install_project(root / "install.vfpy", data, requirements=NO_REQS)
+        assert old.read_text() == "print('new')\n"
+    found = list(backups.rglob("Old Tool.py"))
+    assert [b.read_text() for b in found] == ["print('old version')\n"]
+
+
+def test_move_aside_when_same_second_then_backups_not_overwritten(data):
+    (data / "Scripts").mkdir(parents=True)
+    state = {"files": ["Scripts/a.py"]}
+    for text in ("one", "two"):
+        (data / "Scripts" / "a.py").write_text(text)
+        legacy.move_aside(data, "com.example.x", state, {"Scripts/a.py"})
+    found = sorted(b.read_text() for b in (data / "Extensions").rglob("a.py"))
+    assert found == ["one", "two"]
+
+
+def test_install_project_when_install_fails_after_move_then_files_restored(data, tmp_path, monkeypatch):
+    root = _project_with_old_tool(tmp_path)
+    old = _migrated_state(data, root)
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(extension, "install_folder", boom)
+    with pytest.raises(bootstrap.BootstrapError, match="put back"):
+        bootstrap.install_project(root / "install.vfpy", data, requirements=NO_REQS)
+    assert old.read_text() == "print('old version')\n"
+    last = json.loads(legacy.log_path(data, "com.example.proja").read_text().splitlines()[-1])
+    assert last["action"] == "restored"

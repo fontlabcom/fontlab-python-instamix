@@ -164,17 +164,88 @@ def _prune(folder: Path, scripts: Path) -> None:
         folder = folder.parent
 
 
+def previous_install(data: Path, ext_id: str) -> dict | None:
+    """The last ``install`` record of the log, even after a ``migrated_to`` uninstall."""
+    state, path = None, log_path(data, ext_id)
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(record, dict) and record.get("action") == "install":
+                state = record
+    return state
+
+
+def _recorded(data: Path, state: dict) -> list[Path]:
+    """Paths an install record lists under ``files``, ``hashes`` or ``kept``."""
+    raws = list(state.get("files") or []) + list(state.get("hashes") or {})
+    for item in state.get("kept") or []:
+        raws.append(item[0] if isinstance(item, (list, tuple)) and item else item)
+    paths = [Path(raw) if Path(raw).is_absolute() else data / raw for raw in raws if isinstance(raw, str)]
+    return list(dict.fromkeys(paths))
+
+
+def move_aside(data: Path, ext_id: str, state: dict, targets: set[str]) -> list[tuple[str, str]]:
+    """Move recorded files that sit at install *targets* into the backup folder.
+
+    Returns ``[(original, backup)]``. Unrecorded files are never touched.
+    """
+    if ledger.read(data, ext_id):  # instamix already installed it: files there are ours
+        return []
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    root = data / "Extensions" / ".instamix" / "backup" / ext_id
+    base, count = root / stamp, 1
+    while base.exists():  # never overwrite an earlier backup
+        count += 1
+        base = root / f"{stamp}-{count}"
+    moved = []
+    for path in _recorded(data, state):
+        rel = _rel(data, str(path))
+        if rel not in targets or not (path.is_symlink() or path.exists()) or not _inside(data, path):
+            continue
+        backup = base / rel
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(path, backup)
+        moved.append((str(path), str(backup)))
+    return moved
+
+
+def restore(moved: list, data: Path | None = None, ext_id: str | None = None) -> None:
+    """Put files moved by :func:`move_aside` back; log it when *data* and *ext_id* are given."""
+    for original, backup in reversed(moved):
+        if Path(backup).is_symlink() or Path(backup).exists():
+            Path(original).parent.mkdir(parents=True, exist_ok=True)
+            os.replace(backup, original)
+    if moved and data is not None and ext_id:
+        _log(data, ext_id, {"action": "restored", "id": ext_id, "restored": moved, "time": time.strftime("%Y-%m-%dT%H:%M:%S")})
+
+
+def _log(data: Path, ext_id: str, record: dict) -> None:
+    with log_path(data, ext_id).open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(record, sort_keys=True) + "\n")
+
+
 def migrate(data: Path, ext_id: str, known: set[str], targets: set[str]) -> dict | None:
-    """Remove the legacy install of *ext_id*; return a summary, or None if none exists.
+    """Remove the legacy install of *ext_id*; return a summary, or None if nothing was done.
 
     *known* holds SHA-256 digests of files instamix will install; *targets*
-    holds data-relative POSIX paths it will create. A kept legacy file at
-    one of those targets would block the new install, so nothing is
-    removed and :class:`MigrationError` lists the conflicts.
+    holds data-relative POSIX paths it will create. A kept legacy file in
+    the log's ``files`` at one of those targets would block the new install,
+    so nothing is removed and :class:`MigrationError` lists the conflicts.
+    Other files the log recorded (``hashes``, ``kept``) at a target are older
+    copies: they are moved to ``Extensions/.instamix/backup/<id>/<UTC>/``.
+    After an earlier migration the previous install record is used again.
     """
     data = Path(data)
     state = installed(data, ext_id)
     if not state:
+        prior = previous_install(data, ext_id)
+        moved = move_aside(data, ext_id, prior, targets) if prior else []
+        if moved:
+            _log(data, ext_id, {"action": "backup", "id": ext_id, "moved": moved, "time": time.strftime("%Y-%m-%dT%H:%M:%S")})
+            return {"id": ext_id, "removed": [], "kept": [], "moved": moved, "backup_only": True}
         return None
     remove, kept = plan(data, state, known)
     blocked = [path for path, _ in kept if _rel(data, path) in targets]
@@ -183,12 +254,14 @@ def migrate(data: Path, ext_id: str, known: set[str], targets: set[str]) -> dict
     for path in sorted(remove, key=lambda p: len(p.parts), reverse=True):
         if path.is_symlink() or path.exists():
             _remove(path, data)
+    moved = move_aside(data, ext_id, state, targets)
     record = {"action": "uninstall", "id": ext_id, "time": time.strftime("%Y-%m-%dT%H:%M:%S"), "migrated_to": "fontlab-instamix"}
     record["kept"] = [path for path, _ in kept]
-    with log_path(data, ext_id).open("a", encoding="utf-8") as stream:
-        stream.write(json.dumps(record, sort_keys=True) + "\n")
+    if moved:
+        record["moved"] = moved
+    _log(data, ext_id, record)
     cleanup_shared(data)
-    return {"id": ext_id, "removed": [str(p) for p in remove], "kept": kept}
+    return {"id": ext_id, "removed": [str(p) for p in remove], "kept": kept, "moved": moved}
 
 
 def _rel(data: Path, path: str) -> str:

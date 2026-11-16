@@ -365,19 +365,25 @@ def _install_checkout(
                 finish=lambda target: _finish(project, data_manifest, target),
                 fields={"init_script": True} if project.init_script else None,
             ),
+            data,
         )
     if project.init_script:
         initscript.update(data)
     return record
 
 
-def _install_after_migration(migrated, ext_id: str, install):
+def _install_after_migration(migrated, ext_id: str, install, data: Path | None = None):
     """Run *install*; after a legacy migration, say how to recover from a failure."""
     try:
         return install()
     except Exception as exc:
         if not migrated:
             raise
+        legacy.restore(migrated.get("moved") or [], data, ext_id)
+        if migrated.get("backup_only"):
+            raise BootstrapError(
+                f"The new install of {ext_id} failed: {exc}. Files moved aside from a legacy install were put back. Fix the cause and run install.vfpy again."
+            ) from exc
         raise BootstrapError(
             f"The legacy install of {ext_id} was removed, but the new install failed: {exc}. Fix the cause and run install.vfpy again."
         ) from exc

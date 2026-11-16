@@ -3,6 +3,10 @@ this_file: CHANGELOG.md
 ---
 # Changelog
 
+## 1.0.3 (2026-11-16)
+
+- Legacy migration moves files the legacy log recorded (`hashes`, `kept`) at new install targets to `Extensions/.instamix/backup/<id>/<UTC>/` instead of refusing, restores them if the install fails, and still applies after an earlier `migrated_to` uninstall. Unrecorded collisions still refuse. Reruns never move instamix's own files, backup folders are never overwritten, and a rollback restore is logged as `restored`.
+
 ## 1.0.2 (2026-11-16)
 
 - Sibling detection now follows legacy `fontlab-fly`: a neighbouring folder counts only if it has `install.vfpy` and a pyproject with a `[tool.fontlab-install]` table and valid `id`, matched by normalised table or project name. Read-only checkouts such as TypeRig no longer break installs; their specs go to uv.
