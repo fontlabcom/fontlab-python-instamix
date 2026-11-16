@@ -1,0 +1,67 @@
+#FLM: Install fontlab-instamix into FontLab
+# this_file: install.vfpy
+"""Install fontlab-instamix into FontLab 9's Python.
+
+Open this file in FontLab 9 (File > Open) to run it. It places the
+``fontlab_instamix`` package in ``<data>/python/3.11/site-packages``:
+a symlink to ``src/fontlab_instamix`` when run from a git checkout (edits
+are live after a FontLab restart), a fresh copy otherwise or on Windows.
+Stdlib only. Set ``FONTLAB_DATA_DIR`` to install into another data folder.
+"""
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+SOURCE = Path(__file__).resolve().parent
+PACKAGE = SOURCE / "src" / "fontlab_instamix"
+SITE = Path("python") / "3.11" / "site-packages"
+
+
+def data_dir():
+    if os.environ.get("FONTLAB_DATA_DIR"):
+        return Path(os.environ["FONTLAB_DATA_DIR"]).expanduser()
+    sys.path.insert(0, str(PACKAGE.parent))
+    try:
+        from fontlab_instamix import env
+    finally:
+        sys.path.pop(0)
+    return env.data_dir()
+
+
+def remove(path):
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def install():
+    if not (PACKAGE / "__init__.py").is_file():
+        raise RuntimeError(f"fontlab_instamix not found next to this file: {PACKAGE}")
+    site = data_dir() / SITE
+    site.mkdir(parents=True, exist_ok=True)
+    target = site / PACKAGE.name
+    remove(target)
+    if (SOURCE / ".git").exists() and sys.platform != "win32":
+        target.symlink_to(PACKAGE, target_is_directory=True)
+        how = "linked"
+    else:
+        shutil.copytree(PACKAGE, target, ignore=shutil.ignore_patterns("__pycache__"))
+        how = "copied"
+    for name in list(sys.modules):
+        if name == "fontlab_instamix" or name.startswith("fontlab_instamix."):
+            del sys.modules[name]
+    return f"fontlab_instamix {how} into {site}"
+
+
+# FontLab may run a .vfpy under a name other than "__main__", so run unconditionally.
+if __name__ != "install_vfpy_import":
+    text = install()
+    try:
+        from fontlab_instamix import gui
+
+        gui.message(text)
+    except ImportError:
+        print(text)

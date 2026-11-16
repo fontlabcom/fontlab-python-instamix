@@ -1,0 +1,12 @@
+{
+  "this_file": "examples/com.example.hello.fontlabext/manifest.fontlabextj",
+  "id": "com.example.hello",
+  "name": "Hello",
+  "version": "1.0.0",
+  "description": "Example extension: one script and one encoding file.",
+  "min_fontlab": "9.0",
+  "install": [
+    {"from": "scripts", "to": "Scripts/{}"},
+    {"from": "encoding/*.enc", "to": "Encoding/{}"}
+  ]
+}

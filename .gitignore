@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+_private/
+
+# instamix
+src/fontlab_instamix/__version__.py
+.DS_Store
+
+# agent and tool state
+.omc/
+.superpowers-*.md
+uv.lock
