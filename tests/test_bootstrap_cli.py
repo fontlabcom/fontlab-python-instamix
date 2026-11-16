@@ -99,3 +99,64 @@ def test_gui_when_no_pythonqt_then_console(capsys):
 
     gui.message("hi")
     assert "hi" in capsys.readouterr().out
+
+
+def test_install_project_when_neighbour_has_no_install_table_then_left_to_uv(data, tmp_path):
+    other = tmp_path / "typerig"
+    other.mkdir()
+    (other / "install.vfpy").write_text("")
+    (other / "pyproject.toml").write_text('[project]\nname = "typerig"\nversion = "1"\n')
+    bad = tmp_path / "broken"
+    bad.mkdir()
+    (bad / "install.vfpy").write_text("")
+    (bad / "pyproject.toml").write_text("not [valid toml")
+    root = _project(tmp_path / "proj-a", "proj-a", "com.example.proja", ["typerig>=1", "broken"])
+    calls = []
+    records = bootstrap.install_project(
+        root / "install.vfpy", data, requirements=lambda d, specs: calls.append(list(specs))
+    )
+    assert [r["id"] for r in records] == ["com.example.proja"]
+    assert calls == [["typerig>=1", "broken"]]
+    assert sorted(p.name for p in other.iterdir()) == ["install.vfpy", "pyproject.toml"]
+
+
+def test_sibling_when_folder_name_differs_then_matches_project_name(tmp_path):
+    _project(tmp_path / "checkout-x", "Proj_X.lib", "com.example.projx")
+    assert bootstrap._sibling(tmp_path, "proj-x-lib", skip=tmp_path / "proj-a") == tmp_path / "checkout-x"
+
+
+def test_uninstall_when_scripts_subfolders_emptied_then_pruned(data, tmp_path):
+    root = _project(tmp_path / "proj-a", "proj-a", "com.example.proja")
+    (root / "Scripts" / "Features").mkdir()
+    (root / "Scripts" / "Features" / "x.py").write_text("")
+    bootstrap.install_project(root / "install.vfpy", data, requirements=lambda d, s: None)
+    (data / "Scripts" / "Mine").mkdir()
+    assert (data / "Scripts" / "Features").is_dir()
+    extension.uninstall("com.example.proja", data)
+    assert not (data / "Scripts" / "Features").exists()
+    assert (data / "Scripts" / "Mine").is_dir() and (data / "Scripts").is_dir()
+
+
+def test_uninstall_when_user_folder_preexisted_then_kept(data, tmp_path):
+    root = _project(tmp_path / "proj-a", "proj-a", "com.example.proja")
+    (root / "Scripts" / "Mine").mkdir()
+    (root / "Scripts" / "Mine" / "x.py").write_text("")
+    mine = data / "Scripts" / "Mine"
+    mine.mkdir(parents=True)  # user's own empty folder, before install
+    bootstrap.install_project(root / "install.vfpy", data, requirements=lambda d, s: None)
+    assert (mine / "x.py").exists()
+    extension.uninstall("com.example.proja", data)
+    assert mine.is_dir() and not (mine / "x.py").exists()
+
+
+def test_sibling_when_tables_malformed_then_skipped(tmp_path):
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    (bad / "install.vfpy").write_text("")
+    (bad / "pyproject.toml").write_text('tool = 1\nproject = "x"\n')
+    badid = tmp_path / "badid"
+    badid.mkdir()
+    (badid / "install.vfpy").write_text("")
+    (badid / "pyproject.toml").write_text('[project]\nname = "badid"\n[tool.fontlab-install]\nid = "nodots"\n')
+    assert bootstrap._sibling(tmp_path, "bad") is None
+    assert bootstrap._sibling(tmp_path, "badid") is None

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import tempfile
 import tomllib
@@ -249,7 +250,7 @@ def sibling_dependencies(project: Project) -> tuple[list[Path], list[str]]:
         name = markers.split(spec)[0]
         for sep in "<>=!~[ (@":
             name = name.split(sep)[0]
-        sibling = _sibling(project.root.parent, name.strip())
+        sibling = _sibling(project.root.parent, name.strip(), skip=project.root)
         if sibling:
             siblings.append(sibling)
         else:
@@ -257,16 +258,35 @@ def sibling_dependencies(project: Project) -> tuple[list[Path], list[str]]:
     return siblings, specs
 
 
-def _sibling(parent: Path, name: str) -> Path | None:
-    for candidate in dict.fromkeys(
-        [name, name.replace("_", "-"), name.replace("-", "_")]
-    ):
-        folder = parent / candidate
-        if (
-            candidate
-            and (folder / "install.vfpy").is_file()
-            and (folder / "pyproject.toml").is_file()
-        ):
+def _norm(name: str) -> str:
+    """PEP 503 name normalisation (``Foo_Bar.baz`` -> ``foo-bar-baz``)."""
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _sibling(parent: Path, name: str, skip: Path | None = None) -> Path | None:
+    """Find the checkout beside *skip* that installs the dependency *name*.
+
+    Only folders with install.vfpy and a pyproject.toml holding a
+    ``[tool.fontlab-install]`` table with a valid ``id`` count, matched by that
+    table's ``name`` or ``[project].name`` (never by folder name alone), so
+    unrelated checkouts such as TypeRig are left to uv. First sorted folder wins.
+    """
+    wanted = _norm(name)
+    if not wanted or not parent.is_dir():
+        return None
+    for folder in sorted(parent.iterdir()):
+        if folder == skip or not (folder / "install.vfpy").is_file():
+            continue
+        try:
+            doc = tomllib.loads((folder / "pyproject.toml").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        tool, project = doc.get("tool"), doc.get("project")
+        table = tool.get("fontlab-install") if isinstance(tool, dict) else None
+        if not isinstance(table, dict) or not manifest.ID_PATTERN.match(str(table.get("id", ""))):
+            continue
+        names = {table.get("name"), project.get("name") if isinstance(project, dict) else None}
+        if wanted in {_norm(n) for n in names if isinstance(n, str)}:
             return folder
     return None
 

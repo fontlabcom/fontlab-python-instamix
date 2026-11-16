@@ -675,3 +675,17 @@ def test_stub_download_when_no_wheel_then_clear_error(tmp_path, monkeypatch, dat
     )
     with pytest.raises(RuntimeError, match="no fontlab-instamix wheel"):
         ns["download"](tmp_path)
+
+
+def test_initscript_when_only_block_removed_then_file_deleted(tmp_path):
+    initscript.update(tmp_path)
+    assert (tmp_path / "initScript.py").is_file()
+    assert initscript.update(tmp_path, remove=True)
+    assert not (tmp_path / "initScript.py").exists()
+
+
+def test_initscript_when_user_content_then_file_kept(tmp_path):
+    (tmp_path / "initScript.py").write_text("print('mine')\n")
+    initscript.update(tmp_path)
+    initscript.update(tmp_path, remove=True)
+    assert "mine" in (tmp_path / "initScript.py").read_text()

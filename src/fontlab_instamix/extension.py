@@ -373,9 +373,36 @@ def _remove_tracked(data: Path, entries: list[dict]) -> list[dict]:
     return removed
 
 
+def _created_dirs(data: Path, entries: list[dict]) -> set[Path]:
+    """Folders instamix created: ``dir`` entries of *entries* and of every ledger record."""
+    owned = list(entries)
+    for record in ledger.records(data):
+        owned += record.get("entries", [])
+    paths = (_entry_path(data, e) for e in owned if e.get("kind") == "dir")
+    return {p for p in paths if p is not None}
+
+
+def _prune_empty(data: Path, path: Path | None, created: set[Path]) -> None:
+    """Remove now-empty folders above *path* that instamix created, never ``Scripts/``."""
+    scripts = Path(data) / "Scripts"
+    if path is None:
+        return
+    folder = path.parent
+    while folder != scripts and scripts in folder.parents and folder in created:
+        try:
+            folder.rmdir()
+        except OSError:
+            return
+        folder = folder.parent
+
+
 def remove_entries(data: Path, entries: list[dict]) -> list[str]:
     """Remove recorded paths that are still ours; return the ones left behind."""
-    removed = {id(e) for e in _remove_tracked(data, entries)}
+    done = _remove_tracked(data, entries)
+    created = _created_dirs(data, entries) if done else set()
+    for entry in done:
+        _prune_empty(data, _entry_path(data, entry), created)
+    removed = {id(e) for e in done}
     kept = []
     for entry in entries:
         path = _entry_path(data, entry)

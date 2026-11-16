@@ -109,7 +109,8 @@ It matches the legacy `install.vfpy`:
 - The version comes from the static `[project].version`, then the hatch-vcs version file, `PKG-INFO`, `git describe` and the fallback version.
 - `<dist>-<version>.dist-info` (INSTALLER `fontlab-instamix`) is written so `importlib.metadata` finds the package. Uninstall removes it and never follows the editable package link.
 - `Scripts/Instamix/` holds `List Extensions.py` and `Uninstall <id>.py`.
-- For fontlabapp, the `fontlabapp.plugins` block is added to `initScript.py`, and removed again on uninstall.
+- For fontlabapp, the `fontlabapp.plugins` block is added to `initScript.py`, and removed again on uninstall; `initScript.py` is deleted if nothing else is in it. Empty folders under `Scripts/` that instamix created are pruned too (never `Scripts/` itself, never a folder that existed before install).
+- Dependencies uv installed from PyPI (for example fonttools) stay after uninstall: other extensions may share them, and the legacy installer also kept them. Sibling checkouts are detected only if their pyproject has a `[tool.fontlab-install]` table with a valid `id`; anything else (such as TypeRig) goes to uv.
 - A legacy `install.vfpy` install of the same id is migrated first. Files it logged are removed; changed files are kept. If a kept file would collide with the new install, the install stops before it changes anything. Shared legacy tools (`fontlab_install.py`, `Scripts/Extensions/`) are removed once no legacy install remains.
 
 ## Development

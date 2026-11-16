@@ -55,6 +55,9 @@ def update(data: Path, *, remove: bool = False) -> bool:
     new = updated(contents, remove)
     if new == contents:
         return False
+    if remove and not new.strip():
+        path.unlink()  # nothing but our block was in it
+        return True
     handle, temp = tempfile.mkstemp(prefix=".initScript-", dir=str(path.parent))
     try:
         with os.fdopen(handle, "wb") as stream:

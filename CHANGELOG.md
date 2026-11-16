@@ -3,6 +3,12 @@ this_file: CHANGELOG.md
 ---
 # Changelog
 
+## 1.0.2 (2026-11-16)
+
+- Sibling detection now follows legacy `fontlab-fly`: a neighbouring folder counts only if it has `install.vfpy` and a pyproject with a `[tool.fontlab-install]` table and valid `id`, matched by normalised table or project name. Read-only checkouts such as TypeRig no longer break installs; their specs go to uv.
+- Uninstall removes empty folders that instamix created under `Scripts/` (never `Scripts/` itself) and deletes `initScript.py` when only instamix's block was in it.
+- 147 offline pytest tests; an offline run installed and uninstalled all 13 workspace packages in one data folder.
+
 ## 1.0.1 (2026-11-16)
 
 - Legacy `install.vfpy` parity in `bootstrap.install_project`: environment markers (`markers.py`), hatch-vcs versions (`vcs.py`), dist-info (`distinfo.py`), the fontlabapp `initScript.py` block (`initscript.py`), `Scripts/Instamix` launchers (`launchers.py`, `launch.py`), plugin bundles under `Extensions/<kind>`, Scripts mapping and junk filter, hatch/project fallbacks for packages and dependencies, and migration of legacy installs (`legacy.py`).
