@@ -48,7 +48,7 @@ def test_install_project_when_sibling_dep_then_both_installed(data, tmp_path):
     assert calls == [["fonttools"]]
     site = data / "python" / "3.11" / "site-packages"
     assert (site / "proj_a" / "__init__.py").is_file()
-    assert (data / "Scripts" / "com.example.proja" / "proj-a.py").is_file()
+    assert (data / "Scripts" / "proj-a.py").is_file()  # top-level Scripts/ maps onto FontLab Scripts
     if sys.platform != "win32":
         assert (site / "proj_a").resolve() == (root / "src" / "proj_a").resolve()
     extension.uninstall("com.example.proja", data)
@@ -62,7 +62,7 @@ def test_install_project_when_run_twice_then_reinstalls_and_uninstalls(data, tmp
     bootstrap.install_project(root / "install.vfpy", data, requirements=no_reqs)
     bootstrap.install_project(root / "install.vfpy", data, requirements=no_reqs)
     site = data / "python" / "3.11" / "site-packages"
-    script = data / "Scripts" / "com.example.proja" / "proj-a.py"
+    script = data / "Scripts" / "proj-a.py"
     assert script.is_file() and (site / "proj_a").exists()
     assert extension.uninstall("com.example.proja", data) == []
     assert not script.exists() and not script.is_symlink()

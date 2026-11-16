@@ -13,7 +13,8 @@ from __future__ import annotations
 import re
 from pathlib import PurePosixPath
 
-TARGETS = ("Scripts", "Actions", "Codepage", "Data", "Encoding", "site-packages")
+TARGETS = ("Scripts", "Actions", "Codepage", "Data", "Encoding", "Extensions", "site-packages")
+RESERVED = {"extensions": {".instamix", "library"}}  # instamix's own folders
 SITE_PACKAGES = "python/3.11/site-packages"
 _VAR = re.compile(r"\{([^{}]*)\}")
 
@@ -68,4 +69,7 @@ def resolve(rule: str, basename: str, variables: dict[str, str] | None = None) -
     if any("\\" in p or ":" in p for p in parts):  # Windows separators or drives
         raise DestError(f"destination parts may not contain '\\' or ':': {expanded!r}")
     root = target_root(target_name(parts[0]))
+    reserved = RESERVED.get(root.lower())
+    if reserved is not None and (len(parts) < 2 or parts[1].lower() in reserved):
+        raise DestError(f"{root} needs a subfolder other than {', '.join(sorted(reserved))}: {rule!r}")
     return str(PurePosixPath(root, *parts[1:]))

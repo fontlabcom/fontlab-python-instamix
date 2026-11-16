@@ -132,6 +132,14 @@ def default_copy() -> bool:
     return sys.platform == "win32"
 
 
+JUNK = ("__pycache__", "*.pyc", "*.vfpyc", ".DS_Store")
+
+
+def _junk(rel: Path) -> bool:
+    """Byte-code and Finder files are never installed (legacy SCRIPT_JUNK)."""
+    return any(fnmatch.fnmatch(part, pattern) for part in rel.parts for pattern in JUNK)
+
+
 def sources(folder: Path, pattern: str) -> list[tuple[Path, str]]:
     """Files matched by a ``from`` pattern, with their path below the match root.
 
@@ -146,7 +154,7 @@ def sources(folder: Path, pattern: str) -> list[tuple[Path, str]]:
     for match in matches:
         if match.is_dir():
             for child in sorted(match.rglob("*")):
-                if child.is_file() and "__pycache__" not in child.parts:
+                if child.is_file() and not _junk(child.relative_to(match)):
                     found.append((child, child.relative_to(match).as_posix()))
         elif match.is_file():
             found.append((match, match.name))
@@ -204,8 +212,14 @@ def install_folder(
     copy: bool | None = None,
     requirements=None,
     editable: bool = False,
+    finish=None,
+    fields: dict | None = None,
 ) -> dict:
     """Install one unpacked ``.fontlabext`` folder; return its ledger record.
+
+    ``finish(data)`` may create more files after placement (dist-info,
+    launchers) and returns them in creation order, folders first; they are
+    recorded as owned entries. ``fields`` adds keys to the ledger record.
 
     ``requirements`` is called as ``requirements(data, list_of_specs)`` when
     the manifest lists ``python.requires`` (``packages.install`` by default).
@@ -239,6 +253,8 @@ def install_folder(
         for source, target in pairs:
             origin = source.resolve() if editable else library / source.relative_to(folder)
             placement.place(origin, target)
+        if finish:
+            placement.entries += generated_entries(data, finish(data))
     except Exception:
         # Roll back: drop the new files, bring back the old Library copy and links.
         remove_entries(data, placement.entries)
@@ -258,6 +274,7 @@ def install_folder(
         "library": placement.rel(library),
         "requires": list(info.requires),
         "entries": placement.entries,
+        **(fields or {}),
     }
     if info.requires:
         if requirements is None:
@@ -272,6 +289,18 @@ def install_folder(
             raise
     ledger.write(data, record)
     return record
+
+
+def generated_entries(data: Path, paths: list[Path]) -> list[dict]:
+    """Ledger entries for files and folders that instamix wrote itself."""
+    entries = []
+    for path in paths:
+        rel = Path(path).relative_to(data).as_posix()
+        if Path(path).is_dir():
+            entries.append({"path": rel, "kind": "dir"})
+        else:
+            entries.append({"path": rel, "kind": "copy", "sha256": ledger.sha256(Path(path))})
+    return entries
 
 
 def install(
@@ -394,6 +423,10 @@ def uninstall(ext_id: str, data: Path) -> list[str]:
         raise InstallError(str(error)) from error
     if record is None:
         raise InstallError(f"{ext_id} is not installed")
+    if record.get("init_script"):
+        from . import initscript
+
+        initscript.update(data, remove=True)  # before files go, so the hook never dangles
     kept = uninstall_links(data, record)
     library = library_path(data, ext_id)
     if record.get("library") not in (None, Path(library).relative_to(data).as_posix()):
@@ -401,6 +434,10 @@ def uninstall(ext_id: str, data: Path) -> list[str]:
     if library.exists() or library.is_symlink():
         _remove_tree(data, library)
     ledger.remove(data, ext_id)
+    if not ledger.records(data):
+        from . import launchers
+
+        launchers.remove_list(data)
     return kept
 
 

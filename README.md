@@ -79,25 +79,14 @@ Unknown manifest keys are errors, except `this_file`.
 
 See `examples/com.example.hello.fontlabext`.
 
-## Two-line install.vfpy for other projects
+## Stub install.vfpy for other projects
 
-```python
-#FLM: Install this project into FontLab
-import fontlab_instamix.bootstrap as b  # missing? open fontlab-python-instamix/install.vfpy in FontLab first
-b.install_project(__file__)
-```
-
-If instamix is not installed yet, FontLab raises `ModuleNotFoundError:
-fontlab_instamix`. Get it by opening `fontlab-python-instamix/install.vfpy` in
-FontLab once. To also work from a sibling checkout, replace the first line with:
-
-```python
-try: import fontlab_instamix.bootstrap as b
-except ImportError:
-    import sys, pathlib; sys.path.append(str(pathlib.Path(__file__).resolve().parents[1] / "fontlab-python-instamix" / "src"))
-    try: import fontlab_instamix.bootstrap as b
-    except ImportError: raise SystemExit("fontlab-instamix missing: open fontlab-python-instamix/install.vfpy in FontLab first")
-```
+`fontlab-instamix stub DIR` writes the standard 40-line `install.vfpy` into a
+project folder (`--force` replaces an existing one; the template is
+`stub/install.vfpy`). When opened in FontLab it gets instamix in this order:
+an installed copy, a sibling `../fontlab-python-instamix` checkout copied into
+site-packages, or the PyPI wheel (sha256 checked, only `fontlab_instamix/`
+extracted). Then it calls `bootstrap.install_project(__file__)`.
 
 `install_project` reads `[tool.fontlab-install]`:
 
@@ -105,11 +94,23 @@ except ImportError:
 [tool.fontlab-install]
 id = "com.example.tool"           # required, reverse-DNS
 name = "Tool"
-packages = ["src/tool"]           # linked into site-packages (editable)
-scripts = ["Scripts"]             # default: Scripts/ if present
-extensions = "Extensions"         # .fontlabext folders inside are installed too
-dependencies = ["fontlab-fly>=1"] # sibling checkouts with install.vfpy first, else uv
+packages = ["src/tool"]           # default: [tool.hatch.build.targets.wheel] packages
+scripts = ["tools/Extra"]         # top-level Scripts/ is always included
+extensions = "Extensions"         # .fontlabext folders and <kind>/<Name>.fontlab<Kind> bundles
+dependencies = ["fontlab-fly>=1"] # default: [project] dependencies
+init-script = false               # default: true only for com.fontlab.fontlabapp
 ```
+
+It matches the legacy `install.vfpy`:
+
+- Top-level `Scripts/` maps onto FontLab's `Scripts/`; other listed folders map to `Scripts/<path>`. `__pycache__`, `*.pyc`, `*.vfpyc` and `.DS_Store` are skipped.
+- Bundles go to `Extensions/<kind>/<Name>.fontlab<Kind>`.
+- Dependency markers are evaluated for FontLab's Python 3.11 on the host OS. Specs that do not apply are skipped; `METADATA` keeps all of them.
+- The version comes from the static `[project].version`, then the hatch-vcs version file, `PKG-INFO`, `git describe` and the fallback version.
+- `<dist>-<version>.dist-info` (INSTALLER `fontlab-instamix`) is written so `importlib.metadata` finds the package. Uninstall removes it and never follows the editable package link.
+- `Scripts/Instamix/` holds `List Extensions.py` and `Uninstall <id>.py`.
+- For fontlabapp, the `fontlabapp.plugins` block is added to `initScript.py`, and removed again on uninstall.
+- A legacy `install.vfpy` install of the same id is migrated first. Files it logged are removed; changed files are kept. If a kept file would collide with the new install, the install stops before it changes anything. Shared legacy tools (`fontlab_install.py`, `Scripts/Extensions/`) are removed once no legacy install remains.
 
 ## Development
 

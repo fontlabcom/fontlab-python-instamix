@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, bootstrap, env, extension, packages, uv, venv, wrap
+from . import __version__, bootstrap, env, extension, packages, stub, uv, venv, wrap
 
 
 def _data(args) -> Path:
@@ -93,6 +93,12 @@ def cmd_venv(args) -> int:
     return 0
 
 
+def cmd_stub(args) -> int:
+    for folder in args.folders:
+        print(f"wrote {stub.write(Path(folder), force=args.force)}")
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="fontlab-instamix", description="Install extensions and packages into FontLab 9.")
     p.add_argument("--version", action="version", version=__version__)
@@ -145,6 +151,11 @@ def parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_uv_fetch)
 
     sub.add_parser("venv", help="create <data>/.venv for Python 3.11").set_defaults(func=cmd_venv)
+
+    s = sub.add_parser("stub", help="write the instamix install.vfpy stub into repo folders")
+    s.add_argument("folders", nargs="+")
+    s.add_argument("--force", action="store_true", help="replace an existing install.vfpy")
+    s.set_defaults(func=cmd_stub)
     return p
 
 
