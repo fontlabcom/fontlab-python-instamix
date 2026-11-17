@@ -4,6 +4,15 @@ this_file: CHANGELOG.md
 
 # Changelog
 
+## 2026-11-17 — Reinstall after import in copy mode (Issue 259 F10)
+
+- Rerunning an installer failed with "refusing to overwrite existing
+  ...site-packages/<package>" once FontLab had imported a copied package: the
+  `__pycache__` Python writes kept the old folder from being removed. Copy mode
+  is the Windows default, so every Windows reinstall failed after first use
+  (also reproduced on macOS with `copy=True`). Removal now deletes a
+  `__pycache__` that holds only `.pyc` files, as package pruning already did.
+
 ## 2026-11-17 — Windows FontLab 9 uv bootstrap (Issue 259)
 
 Tested in FontLab 9.1.9813 for Windows (x64 on Windows 11 ARM, Parallels),

@@ -470,6 +470,23 @@ def _entry_path(data: Path, entry: dict) -> Path | None:
     return path if inside(data, path) else None
 
 
+def _drop_bytecode(folder: Path) -> None:
+    """Delete a ``__pycache__`` that Python wrote into an installed copy (only ``.pyc`` files).
+
+    Copy installs (the Windows default) put packages in site-packages, where importing
+    them writes byte code that would otherwise block removing the folder on reinstall.
+    """
+    cache = folder / "__pycache__"
+    if (
+        folder.is_dir()
+        and not folder.is_symlink()
+        and cache.is_dir()
+        and not cache.is_symlink()
+        and all(child.is_file() and child.suffix == ".pyc" for child in cache.iterdir())
+    ):
+        shutil.rmtree(cache)
+
+
 def _remove_tracked(data: Path, entries: list[dict]) -> list[dict]:
     """Remove recorded paths that are still ours; return the removed entries."""
     removed = []
@@ -478,6 +495,7 @@ def _remove_tracked(data: Path, entries: list[dict]) -> list[dict]:
         if path is None or not (path.exists() or path.is_symlink()) or not _ours(path, entry):
             continue
         if entry["kind"] == "dir":
+            _drop_bytecode(path)
             try:
                 path.rmdir()
             except OSError:

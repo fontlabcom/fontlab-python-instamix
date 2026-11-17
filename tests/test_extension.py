@@ -90,6 +90,25 @@ def test_install_when_reinstall_same_then_ok(data, example):
     assert (data / "Scripts" / "com.example.hello" / "Hello.py").is_file()
 
 
+def test_install_when_reinstall_after_import_then_bytecode_cleared(data, example):
+    extension.install(example, data, requirements=_no_reqs, copy=True)
+    cache = data / "Scripts" / "com.example.hello" / "__pycache__"
+    cache.mkdir()
+    (cache / "Hello.cpython-311.pyc").write_bytes(b"pyc")
+    extension.install(example, data, requirements=_no_reqs, copy=True)
+    assert (data / "Scripts" / "com.example.hello" / "Hello.py").is_file()
+    assert not cache.exists()
+
+
+def test_install_when_cache_holds_foreign_file_then_file_kept(data, example):
+    extension.install(example, data, requirements=_no_reqs, copy=True)
+    cache = data / "Scripts" / "com.example.hello" / "__pycache__"
+    cache.mkdir()
+    (cache / "notes.txt").write_text("theirs")
+    extension.install(example, data, requirements=_no_reqs, copy=True)
+    assert (cache / "notes.txt").read_text() == "theirs"
+
+
 def test_install_when_foreign_file_in_way_then_error(data, example):
     target = data / "Encoding" / "com.example.hello"
     target.mkdir(parents=True)
@@ -282,3 +301,21 @@ def test_public_api_when_data_explicit_then_overrides_environment(data, example,
     assert not (data / "Extensions").exists()
     assert im.uninstall("com.example.hello", explicit) == []
     assert im.installed(explicit) == []
+
+
+def test_install_when_copied_package_imported_then_reinstall_ok(data, tmp_path):
+    folder = tmp_path / "com.example.pkg.fontlabext"
+    (folder / "src" / "mypkg" / "sub").mkdir(parents=True)
+    (folder / "src" / "mypkg" / "__init__.py").write_text("X = 1\n")
+    (folder / "src" / "mypkg" / "sub" / "__init__.py").write_text("")
+    (folder / "manifest.fontlabextj").write_text(
+        '{"id": "com.example.pkg", "name": "P", "version": "1", "python": {"packages": ["src/mypkg"]}}'
+    )
+    extension.install(folder, data, requirements=_no_reqs, copy=True)
+    site = data / "python" / "3.11" / "site-packages" / "mypkg"
+    for cache in (site / "__pycache__", site / "sub" / "__pycache__"):
+        cache.mkdir()
+        (cache / "__init__.cpython-311.pyc").write_bytes(b"pyc")
+    extension.install(folder, data, requirements=_no_reqs, copy=True)
+    assert (site / "sub" / "__init__.py").is_file()
+    assert not (site / "__pycache__").exists()
