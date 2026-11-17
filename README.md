@@ -6,7 +6,8 @@ this_file: README.md
 Installs extensions, scripts and Python packages into FontLab 9. Stdlib only,
 runs inside FontLab's embedded Python 3.11 and from an ordinary terminal.
 
-- **Extensions**: `.fontlabext` folders and `.fontlabextz` zips are copied to
+- **Extensions**: `.fontlabext` folders (also selectable by their root
+  `manifest.fontlabextj`) and `.fontlabextz` zips are copied to
   `<data>/Extensions/Library/<id>.fontlabext`, then their files are linked
   into `Scripts`, `Encoding`, `Codepage`, `Actions`, `Data` and
   `python/3.11/site-packages`. A ledger records every path, so uninstall
@@ -24,16 +25,51 @@ else `fontlab.flPreferences().dataPathDefault`, else
 
 ## Install inside FontLab
 
-Open `install.vfpy` from this repository in FontLab 9 (File > Open). From a
-git checkout it symlinks `src/fontlab_instamix` into
-`<data>/python/3.11/site-packages` (edits are live after a restart); otherwise
-it copies the package. Then in FontLab's Python panel:
+Open the single `install.vfpy` in FontLab 9 (File > Open). It installs the
+compatible PyPI wheel with SHA-256 verification, including distribution metadata
+and its licence. An adjacent `dist/` wheel or a sibling
+`../fontlab-python-instamix/dist/` wheel works offline; keep only the intended
+wheel there. Source-only sibling copies now require `uv build` first. This avoids
+inventing release metadata or dropping its licence. Download, validation or
+replacement failures restore the previous package and metadata, including links.
+
+The installer uses the running FontLab Python version (3.11 outside the host).
+For editable checkouts use `fontlab-instamix bootstrap DIR` with Instamix already
+installed; the standalone installer consistently installs wheel bytes.
+Then in FontLab's Python panel:
 
 ```python
 import fontlab_instamix as im
 im.install("/path/to/com.example.hello.fontlabextz")
+im.install_packages("fonttools>=4")  # distribution requirements for scripts
+im.installed()  # installation records
 im.uninstall("com.example.hello")
 ```
+
+These calls use the data folder resolved above. Pass `data=Path("/scratch/FontLab 9")`
+to any of them to use an explicit folder (import `Path` from `pathlib`).
+
+## Shared Python packages
+
+`install_packages(*specs, data=None)` installs distribution requirements, then
+refreshes import caches. It does not infer distribution names from import names
+or reload modules already imported. `im.install` continues to install extensions.
+
+Package installation creates or verifies `<data>/.venv`, using the embedded
+Python version and architecture inside FontLab. Standalone commands default to
+FontLab 9's Python 3.11 and the current OS/architecture; they do not discover a
+remote FontLab yet. A qualified uv Python request prevents accidental Intel
+selection on Apple Silicon. uv is kept in `<data>/python/uv/`.
+
+The venv reads `<data>/python/<version>/site-packages` through its own managed
+`.pth` file. Packages install directly into that canonical directory, which
+FontLab already adds to its import path. FontLab need not process `.pth` files.
+An incompatible existing venv or unrelated `.pth` file is refused without
+replacement: inspect it and move it aside explicitly before retrying.
+
+Remote callers can pass `env.Target(version, platform, arch)` to
+`packages.install`, `packages.listed`, `packages.uninstall` and `venv.create`.
+These provider APIs do not themselves contact FontLab.
 
 ## Command line
 
@@ -81,12 +117,23 @@ See `examples/com.example.hello.fontlabext`.
 
 ## Stub install.vfpy for other projects
 
-`fontlab-instamix stub DIR` writes the standard 40-line `install.vfpy` into a
-project folder (`--force` replaces an existing one; the template is
-`stub/install.vfpy`). When opened in FontLab it gets instamix in this order:
-an installed copy, a sibling `../fontlab-python-instamix` checkout copied into
-site-packages, or the PyPI wheel (sha256 checked, only `fontlab_instamix/`
-extracted). Then it calls `bootstrap.install_project(__file__)`.
+`fontlab-instamix stub DIR` writes `install.vfpy` (`--force` replaces an
+existing file). In a checkout with `pyproject.toml`, the bootstrap uses an installed
+Instamix, otherwise the same validated wheel installer as the standalone file.
+It then calls `bootstrap.install_project(__file__)`. The canonical resource is
+`src/fontlab_instamix/stub_install.vfpy`; generated copies are checked for parity.
+
+For a `.fontlabext` folder, `stub DIR` writes a two-line entry that calls
+`extension.install` on that folder. This short entry requires Instamix installed;
+use the standalone installer once first. To distribute multiple extensions:
+
+```sh
+fontlab-instamix pack com.example.first.fontlabext com.example.second.fontlabext --out tools.fontlabextz
+```
+
+Every manifest and root identity is checked before creating a temporary archive;
+case-insensitive duplicate identities are refused. A failed pack preserves the
+previous output archive. Install/uninstall still tracks each extension separately.
 
 `install_project` reads `[tool.fontlab-install]`:
 
@@ -116,9 +163,29 @@ It matches the legacy `install.vfpy`:
 ## Development
 
 ```sh
-./test.sh        # uv run --with pytest pytest -q
+./test.sh        # requires uv and preinstalled matching CPython 3.11 for offline venv test
 ./build.sh       # wheel + sdist into dist/
 ./publish.sh     # tagged, clean tree only
 ```
 
 Apache-2.0. `platformdirs.py` vendors part of platformdirs (MIT, notice kept).
+
+## Target the running FontLab from a terminal
+
+Install optional `fontlab-remopy` in the external CLI Python environment, then use
+`fontlab-instamix --remote env`, `--remote pkg install uharfbuzz`,
+`--remote pkg list`, `--remote pkg uninstall NAME`, `--remote ext install PATH`,
+`--remote ext list`, `--remote ext uninstall ID`, or `--remote venv`.
+`--remote --bridge /path/to/executable` selects one Remopy bridge executable.
+The host supplies its Python version, architecture and data folder. A conflicting
+`--data-dir` is refused; `FONTLAB_DATA_DIR` does not override the discovered host.
+
+Each filesystem operation proves shared access with an owned temporary nonce file.
+Long uv operations run externally in the qualified target interpreter, outside
+FontLab's short remote deadline. Terminal and host architectures may differ;
+the provider verifies the actual standalone interpreter. Same OS is required.
+A timeout is never retried automatically and may leave partial installation data.
+Cache-refresh failure reports completed installation separately; already imported
+modules may need a later owner restart. The command does not restart FontLab.
+Remote `--run-hooks` is refused because hooks need FontLab's execution context.
+Windows/CrossOver routing and live native acceptance remain separate pending work.

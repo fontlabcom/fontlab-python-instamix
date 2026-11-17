@@ -18,6 +18,8 @@ import sys
 import time
 from pathlib import Path
 
+from . import env
+
 LEDGER_DIR = "Extensions/.instamix"
 SAFE_ID = re.compile(r"^[A-Za-z0-9_-][A-Za-z0-9._-]*$")
 
@@ -42,6 +44,19 @@ def record_path(data: Path, ext_id: str) -> Path:
     return ledger_dir(data) / f"{check_id(ext_id)}.json"
 
 
+def check_paths(data: Path, ext_id: str) -> None:
+    """Preflight record, temporary record and log before changing an install."""
+    path = record_path(data, ext_id)
+    for target in (path, path.with_suffix(".tmp"), ledger_dir(data) / LOG):
+        _check_file(data, target)
+
+
+def _check_file(data: Path, path: Path) -> None:
+    env.require_inside(data, path)
+    if path.is_symlink():
+        raise LedgerError(f"refusing symlinked ledger file: {path}")
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
@@ -53,6 +68,7 @@ def sha256(path: Path) -> str:
 def read(data: Path, ext_id: str) -> dict | None:
     """Return the install record for ``ext_id`` or ``None``."""
     path = record_path(data, ext_id)
+    _check_file(data, path)
     if not path.is_file():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
@@ -60,9 +76,11 @@ def read(data: Path, ext_id: str) -> dict | None:
 
 def write(data: Path, record: dict) -> Path:
     """Write ``record`` atomically and append it to the log."""
+    check_paths(data, record["id"])
     path = record_path(data, record["id"])
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(".tmp")
+    _check_file(data, temp)
     temp.write_text(json.dumps(record, indent=2, sort_keys=True), encoding="utf-8")
     temp.replace(path)
     log(data, {"action": "install", "id": record["id"], "version": record.get("version")})
@@ -70,6 +88,7 @@ def write(data: Path, record: dict) -> Path:
 
 
 def remove(data: Path, ext_id: str) -> None:
+    check_paths(data, ext_id)
     path = record_path(data, ext_id)
     if path.exists():
         path.unlink()
@@ -79,11 +98,13 @@ def remove(data: Path, ext_id: str) -> None:
 def records(data: Path) -> list[dict]:
     """Return all install records, sorted by id."""
     folder = ledger_dir(data)
+    env.require_inside(data, folder / ".instamix-check")
     if not folder.is_dir():
         return []
     found = []
     for path in sorted(folder.glob("*.json")):
         try:
+            _check_file(data, path)
             record = json.loads(path.read_text(encoding="utf-8"))
             check_id(record["id"])
         except (OSError, ValueError, KeyError, TypeError) as error:
@@ -96,6 +117,7 @@ def records(data: Path) -> list[dict]:
 def log(data: Path, entry: dict) -> None:
     """Append one JSON line to the install log."""
     folder = ledger_dir(data)
+    _check_file(data, folder / LOG)
     folder.mkdir(parents=True, exist_ok=True)
     entry = {"time": time.strftime("%Y-%m-%dT%H:%M:%S"), **entry}
     with open(folder / LOG, "a", encoding="utf-8") as handle:

@@ -350,6 +350,13 @@ def _install_checkout(
         (folder / manifest.MANIFEST).write_text(
             json.dumps(data_manifest), encoding="utf-8"
         )
+        generated_root = Path(temp) / "generated"
+        written = _finish(project, data_manifest, generated_root)
+        generated = [
+            (path, data / path.relative_to(generated_root))
+            for path in written
+            if path.parent not in written
+        ]
         migrated = migrate_legacy(project, folder, data)
         # Files copied into the temp folder vanish afterwards, so never link to them.
         copy = True if copied else copy
@@ -362,7 +369,7 @@ def _install_checkout(
                 copy=copy,
                 requirements=requirements,
                 editable=True,
-                finish=lambda target: _finish(project, data_manifest, target),
+                generated=generated,
                 fields={"init_script": True} if project.init_script else None,
             ),
             data,
@@ -417,8 +424,6 @@ def migrate_legacy(project: Project, folder: Path, data: Path) -> dict | None:
 
 def _finish(project: Project, data_manifest: dict, data: Path) -> list[Path]:
     """Write the dist-info and the uninstall launcher; return them, folders first."""
-    for old in distinfo.stale(data, project.name):
-        shutil.rmtree(old)
     requires = list(project.dependencies)
     packages = [Path(package).name for package in project.packages]
     written = distinfo.write(

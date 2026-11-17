@@ -160,3 +160,9 @@ def test_sibling_when_tables_malformed_then_skipped(tmp_path):
     (badid / "pyproject.toml").write_text('[project]\nname = "badid"\n[tool.fontlab-install]\nid = "nodots"\n')
     assert bootstrap._sibling(tmp_path, "bad") is None
     assert bootstrap._sibling(tmp_path, "badid") is None
+
+
+def test_cli_when_manifest_selected_then_extension_installed(data, example, capsys):
+    assert cli.main(["--data-dir", str(data), "ext", "install", str(example / "manifest.fontlabextj")]) == 0
+    assert "com.example.hello" in capsys.readouterr().out
+    assert (data / "Scripts" / "com.example.hello" / "Hello.py").is_file()

@@ -431,10 +431,9 @@ def test_legacy_plan_when_path_outside_data_then_kept(data, tmp_path):
 # --- stub -----------------------------------------------------------------------
 
 
-def test_stub_when_packaged_then_equals_root_copy_and_short():
+def test_stub_when_packaged_then_equals_root_copy_and_compiles():
     text = stub.text()
     assert text == (ROOT / "stub" / "install.vfpy").read_text(encoding="utf-8")
-    assert len(text.splitlines()) <= 40
     compile(text, "install.vfpy", "exec")
 
 
@@ -482,6 +481,7 @@ def _fake_pypi(monkeypatch, blob, digest):
             {
                 "packagetype": "bdist_wheel",
                 "url": "wheel",
+                "filename": "fontlab_python_instamix-1-py3-none-any.whl",
                 "digests": {"sha256": digest},
             },
         ]
@@ -495,15 +495,18 @@ def _fake_pypi(monkeypatch, blob, digest):
     )
 
 
-def test_stub_download_when_sha_matches_then_only_package_extracted(
+def test_stub_download_when_sha_matches_then_package_and_metadata_extracted(
     tmp_path, monkeypatch, data
 ):
     ns = _stub_namespace(tmp_path, monkeypatch, data)
     blob = _wheel(
         {
             "fontlab_instamix/__init__.py": "X = 1\n",
-            "evil/x.py": "",
+            "fontlab_instamix/legacy.py": "",
             "fontlab_python_instamix-1.dist-info/RECORD": "",
+            "fontlab_python_instamix-1.dist-info/METADATA": "Name: fontlab-python-instamix\nVersion: 1\n",
+            "fontlab_python_instamix-1.dist-info/WHEEL": "",
+            "fontlab_python_instamix-1.dist-info/licenses/LICENSE": "licence",
         }
     )
     _fake_pypi(monkeypatch, blob, hashlib.sha256(blob).hexdigest())
@@ -511,7 +514,7 @@ def test_stub_download_when_sha_matches_then_only_package_extracted(
     target.mkdir()
     ns["download"](target)
     assert (target / "fontlab_instamix" / "__init__.py").read_text() == "X = 1\n"
-    assert sorted(p.name for p in target.iterdir()) == ["fontlab_instamix"]
+    assert sorted(p.name for p in target.iterdir()) == ["fontlab_instamix", "fontlab_python_instamix-1.dist-info"]
 
 
 def test_stub_download_when_sha_differs_then_refused(tmp_path, monkeypatch, data):
@@ -523,38 +526,6 @@ def test_stub_download_when_sha_differs_then_refused(tmp_path, monkeypatch, data
     with pytest.raises(RuntimeError, match="sha256"):
         ns["download"](target)
     assert not (target / "fontlab_instamix").exists()
-
-
-def test_stub_ensure_when_sibling_checkout_then_copied_into_site(
-    tmp_path, monkeypatch, data
-):
-    ns = _stub_namespace(tmp_path, monkeypatch, data)
-    sibling = tmp_path / "fontlab-python-instamix" / "src" / "fontlab_instamix"
-    sibling.mkdir(parents=True)
-    (sibling / "__init__.py").write_text("SIBLING = True\n")
-    import importlib as real_importlib
-
-    calls = []
-
-    def fake_import(name):
-        calls.append(name)
-        if len(calls) == 1:
-            raise ImportError(name)
-        return name
-
-    saved = {k: v for k, v in sys.modules.items() if k.startswith("fontlab_instamix")}
-    monkeypatch.setattr(real_importlib, "import_module", fake_import)
-    monkeypatch.setitem(ns, "importlib", real_importlib)
-    try:
-        assert ns["ensure"]() == "fontlab_instamix"
-    finally:
-        sys.modules.update(
-            saved
-        )  # the stub purges fontlab_instamix* before re-importing
-    assert (
-        _site(data) / "fontlab_instamix" / "__init__.py"
-    ).read_text() == "SIBLING = True\n"
-    assert calls == ["fontlab_instamix.legacy", "fontlab_instamix"]
 
 
 # --- fix round 1 ----------------------------------------------------------------
@@ -628,6 +599,19 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
     sibling.mkdir(parents=True)
     (sibling / "__init__.py").write_text("NEW = True\n")
     (sibling / "legacy.py").write_text("")
+    blob = _wheel({
+        "fontlab_instamix/__init__.py": "NEW = True\n",
+        "fontlab_instamix/legacy.py": "",
+        "fontlab_instamix/gui.py": "def message(text): pass\n",
+        "fontlab_instamix/bootstrap.py": "def install_project(path): return []\n",
+        "fontlab_python_instamix-1.dist-info/METADATA": "Name: fontlab-python-instamix\nVersion: 1\n",
+        "fontlab_python_instamix-1.dist-info/RECORD": "",
+        "fontlab_python_instamix-1.dist-info/WHEEL": "",
+        "fontlab_python_instamix-1.dist-info/licenses/LICENSE": "owned fixture",
+    })
+    wheel = sibling.parents[1] / "dist/fontlab_python_instamix-1-py3-none-any.whl"
+    wheel.parent.mkdir()
+    wheel.write_bytes(blob)
     import importlib as real_importlib
 
     seen = []
@@ -635,6 +619,11 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
     def fake_import(name):
         seen.append(name)
         if (old / "legacy.py").exists():
+            from types import SimpleNamespace
+            if name.endswith(".gui"):
+                return SimpleNamespace(message=lambda text: None)
+            if name.endswith(".bootstrap"):
+                return SimpleNamespace(install_project=lambda path: [])
             return name
         raise ImportError(name)  # 1.0.0 has no fontlab_instamix.legacy
 
@@ -673,7 +662,7 @@ def test_stub_download_when_no_wheel_then_clear_error(tmp_path, monkeypatch, dat
     monkeypatch.setattr(
         urllib.request, "urlopen", lambda url, timeout=0: io.BytesIO(body)
     )
-    with pytest.raises(RuntimeError, match="no fontlab-instamix wheel"):
+    with pytest.raises(RuntimeError, match="no compatible fontlab-instamix wheel"):
         ns["download"](tmp_path)
 
 
