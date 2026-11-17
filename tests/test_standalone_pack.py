@@ -21,6 +21,7 @@ def wheel(gui="def message(text):\n    print('fixture GUI: ' + text)\n"):
         for name, value in {
             "fontlab_instamix/__init__.py": "VALUE = 123\n",
             "fontlab_instamix/legacy.py": "",
+            "fontlab_instamix/bootstrap.py": "def _legacy_rollback(*args): pass\n",
             "fontlab_instamix/extension.py": "def preflight_plugin_migration(*args): pass\n",
             "fontlab_instamix/gui.py": gui,
             INFO + "/METADATA": "Name: fontlab-python-instamix\nVersion: 1.2.3\n",
@@ -256,7 +257,8 @@ def test_old_installed_runtime_requires_replacement(tmp_path, monkeypatch, capab
         ns["ensure"]()
 
 
-def test_new_wheel_without_migration_api_restores_prior_modules_and_files(tmp_path, monkeypatch):
+@pytest.mark.parametrize("module, capability", [("extension", "preflight_plugin_migration"), ("bootstrap", "_legacy_rollback")])
+def test_new_wheel_without_migration_api_restores_prior_modules_and_files(tmp_path, monkeypatch, module, capability):
     ns = namespace(tmp_path, monkeypatch)
     site = ns["site"]()
     package = site / "fontlab_instamix"
@@ -269,13 +271,28 @@ def test_new_wheel_without_migration_api_restores_prior_modules_and_files(tmp_pa
     buffer = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(payload)) as old, zipfile.ZipFile(buffer, "w") as new:
         for member in old.infolist():
-            new.writestr(member, "" if member.filename.endswith("/extension.py") else old.read(member.filename))
+            new.writestr(member, "" if member.filename.endswith(f"/{module}.py") else old.read(member.filename))
     path = local_wheel(tmp_path)
     path.write_bytes(buffer.getvalue())
     saved = {k: v for k, v in sys.modules.items() if k == "fontlab_instamix" or k.startswith("fontlab_instamix.")}
-    with pytest.raises(ImportError, match="preflight_plugin_migration"):
+    with pytest.raises(ImportError, match=capability):
         ns["ensure"](force=True)
     assert all(sys.modules[k] is v for k, v in saved.items())
     assert (package / "__init__.py").read_text() == "PREVIOUS = True\n"
     assert metadata.read_bytes() == b"previous genuine version metadata"
     assert sorted(p.name for p in site.iterdir()) == ["fontlab_instamix", metadata.parent.name]
+
+
+def test_runtime_without_legacy_transaction_requires_replacement(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    ns = namespace(tmp_path, monkeypatch)
+    def imported(name):
+        if name.endswith(".extension"):
+            return SimpleNamespace(preflight_plugin_migration=lambda *args: None)
+        return SimpleNamespace(message=lambda text: None, install_project=lambda path: None)
+    ns["importlib"] = SimpleNamespace(import_module=imported, invalidate_caches=lambda: None)
+    def unavailable(target):
+        raise OSError("replacement unavailable; legacy deployment refused")
+    ns["download"] = unavailable
+    with pytest.raises(OSError, match="legacy deployment refused"):
+        ns["ensure"]()

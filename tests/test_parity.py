@@ -604,7 +604,7 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
         "fontlab_instamix/legacy.py": "",
         "fontlab_instamix/extension.py": "def preflight_plugin_migration(*args): pass\n",
         "fontlab_instamix/gui.py": "def message(text): pass\n",
-        "fontlab_instamix/bootstrap.py": "def install_project(path): return []\n",
+        "fontlab_instamix/bootstrap.py": "def install_project(path): return []\ndef _legacy_rollback(*args): pass\n",
         "fontlab_python_instamix-1.dist-info/METADATA": "Name: fontlab-python-instamix\nVersion: 1\n",
         "fontlab_python_instamix-1.dist-info/RECORD": "",
         "fontlab_python_instamix-1.dist-info/WHEEL": "",
@@ -626,7 +626,7 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
             if name.endswith(".gui"):
                 return SimpleNamespace(message=lambda text: None)
             if name.endswith(".bootstrap"):
-                return SimpleNamespace(install_project=lambda path: [])
+                return SimpleNamespace(install_project=lambda path: [], _legacy_rollback=lambda *args: None)
             return name
         raise ImportError(name)  # 1.0.0 has no fontlab_instamix.legacy
 
@@ -779,6 +779,7 @@ def test_move_aside_when_same_second_then_backups_not_overwritten(data):
 def test_install_project_when_install_fails_after_move_then_files_restored(data, tmp_path, monkeypatch):
     root = _project_with_old_tool(tmp_path)
     old = _migrated_state(data, root)
+    log_before = legacy.log_path(data, "com.example.proja").read_bytes()
 
     def boom(*args, **kwargs):
         raise RuntimeError("boom")
@@ -787,5 +788,4 @@ def test_install_project_when_install_fails_after_move_then_files_restored(data,
     with pytest.raises(bootstrap.BootstrapError, match="put back"):
         bootstrap.install_project(root / "install.vfpy", data, requirements=NO_REQS)
     assert old.read_text() == "print('old version')\n"
-    last = json.loads(legacy.log_path(data, "com.example.proja").read_text().splitlines()[-1])
-    assert last["action"] == "restored"
+    assert legacy.log_path(data, "com.example.proja").read_bytes() == log_before

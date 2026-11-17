@@ -3,6 +3,15 @@ this_file: fontlab-python-instamix/PLAN.md
 ---
 # fontlab-python-instamix plan (issue 256)
 
+## Current preservation qualification
+
+Independently review and integrate the legacy-upgrade rollback and required
+bootstrap capability. Publish the fixed provider and self/project installer,
+then re-run the real Examples/Scriptmix legacy fixtures against the released
+wheel before consumer rollout. Keep native, Windows, compatible provider-cohort
+and publisher administration checks separate. The published 1.0.8 provider is
+unsafe for a legacy upgrade that fails on an unowned target.
+
 Instamix installs Python packages and FontLab extensions into the FontLab 9
 user data folder. It runs inside FontLab (stdlib + PythonQt + vendored code
 only) and from a terminal through `fontlab-remopy`.

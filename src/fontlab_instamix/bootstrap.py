@@ -18,12 +18,15 @@ FontLab's Extensions, and adds the FontApp startup block when asked.
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import re
 import shutil
 import tempfile
 import tomllib
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -324,7 +327,6 @@ def install_project(
         )
     data_manifest["python"]["requires"] = specs
     records.append(_install_checkout(project, data_manifest, data, copy, requirements))
-    launchers.write_list(data)
     if project.extensions and (project.root / project.extensions).is_dir():
         for folder in sorted((project.root / project.extensions).rglob("*")):
             nested = any(
@@ -360,43 +362,135 @@ def _install_checkout(
             for path in written
             if path.parent not in written
         ]
-        migrated = migrate_legacy(project, folder, data)
-        # Files copied into the temp folder vanish afterwards, so never link to them.
-        copy = True if copied else copy
-        record = _install_after_migration(
-            migrated,
-            project.id,
-            lambda: extension.install_folder(
-                folder,
-                data,
-                copy=copy,
-                requirements=requirements,
-                editable=True,
-                generated=generated,
-                fields={"init_script": True} if project.init_script else None,
-            ),
-            data,
-        )
-    if project.init_script:
-        initscript.update(data)
+        with _legacy_rollback(project, folder, data, generated):
+            migrated = migrate_legacy(project, folder, data)
+            # Files copied into the temp folder vanish afterwards, so never link to them.
+            copy = True if copied else copy
+            record = _install_after_migration(
+                migrated,
+                project.id,
+                lambda: extension.install_folder(
+                    folder,
+                    data,
+                    copy=copy,
+                    requirements=requirements,
+                    editable=True,
+                    generated=generated,
+                    fields={"init_script": True} if project.init_script else None,
+                ),
+            )
+            if project.init_script:
+                initscript.update(data)
+            launchers.write_list(data)
     return record
 
 
-def _install_after_migration(migrated, ext_id: str, install, data: Path | None = None):
-    """Run *install*; after a legacy migration, say how to recover from a failure."""
+
+@contextmanager
+def _legacy_rollback(
+    project: Project, folder: Path, data: Path, generated: list[tuple[Path, Path]]
+) -> Iterator[None]:
+    """Keep this legacy upgrade's files and receipts until its replacement succeeds."""
+    state = legacy.installed(data, project.id)
+    if not state and not ledger.read(data, project.id):
+        state = legacy.previous_install(data, project.id)
+    if not state:
+        yield
+        return
+    data = data.absolute()
+    info = manifest.load(folder)
+    paths = legacy._recorded(data, state)
+    paths += [path.with_suffix(suffix) for path in paths if path.suffix in (".py", ".vfpy")
+              for suffix in (".pyc", ".vfpyc")]
+    paths += [target for _, target in extension.plan(folder, info, project.id, data)]
+    paths += [target.absolute() for _, target in generated]
+    library = extension.library_path(data, project.id)
+    record = ledger.record_path(data, project.id)
+    paths += [library.with_name(library.name + suffix) for suffix in ("", ".new", ".old", ".prev")]
+    paths += [record, record.with_suffix(".tmp"), ledger.ledger_dir(data) / ledger.LOG,
+              legacy.log_path(data, project.id), ledger.ledger_dir(data) / "backup" / project.id,
+              env.site_packages(data) / (legacy.MODULE + ".py"), data / legacy.MENU / legacy.MARKER,
+              data / legacy.MENU / "List Extensions.py", launchers.folder(data) / launchers.LIST]
+    if project.init_script:
+        paths.append(data / initscript.FILE)
+    roots = []
+    for path in sorted(set(path.absolute() for path in paths), key=lambda path: len(path.parts)):
+        if env.inside(data, path) and not any(parent in roots for parent in path.parents):
+            roots.append(path)
+    parents = set(env.check_folders(data))
+    for path in roots:
+        parents.update(parent for parent in path.parents if parent == data or data in parent.parents)
+    modes = {path: path.stat().st_mode & 0o7777 if path.is_dir() else None for path in parents}
+    temp = Path(tempfile.mkdtemp(prefix="instamix-legacy-rollback-"))
+    recovered = True
+    try:
+        saved = {}
+        for index, path in enumerate(roots):
+            backup = temp / str(index)
+            if path.is_dir() and not path.is_symlink():
+                shutil.copytree(path, backup, symlinks=True)
+            elif path.exists() or path.is_symlink():
+                shutil.copy2(path, backup, follow_symlinks=False)
+            saved[path] = backup
+        (Path(temp) / "recovery.json").write_text(json.dumps({
+            "paths": {str(path): str(backup) if backup.exists() or backup.is_symlink() else None
+                      for path, backup in saved.items()},
+            "directory_modes": {str(path): mode for path, mode in modes.items()},
+        }, indent=2), encoding="utf-8")
+        try:
+            yield
+        except BaseException as error:
+            recovered = False
+            try:
+                for path, backup in saved.items():
+                    extension._remove_tree(data, path)
+                    if backup.is_dir() and not backup.is_symlink():
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copytree(backup, path, symlinks=True)
+                    elif backup.exists() or backup.is_symlink():
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(backup, path, follow_symlinks=False)
+                for path in sorted(parents, key=lambda path: len(path.parts), reverse=True):
+                    if modes[path] is None:
+                        if path.is_dir():
+                            try:
+                                path.rmdir()
+                            except OSError as cleanup_error:
+                                if cleanup_error.errno not in (errno.ENOTEMPTY, errno.EEXIST):
+                                    raise
+                    else:
+                        path.mkdir(parents=True, exist_ok=True)
+                        path.chmod(modes[path])
+            except BaseException as recovery_error:
+                recovery_error.add_note(f"Legacy recovery files retained at {temp}")
+                raise
+            recovered = True
+            if hasattr(error, "installed_records"):
+                error.installed_records = [record for record in error.installed_records
+                                           if record.get("id") != project.id]
+            raise
+    finally:
+        if recovered:
+            shutil.rmtree(temp)
+
+
+def _install_after_migration(migrated, ext_id: str, install):
+    """Report a failed replacement while the enclosing legacy transaction restores it."""
     try:
         return install()
     except Exception as exc:
         if not migrated:
             raise
-        legacy.restore(migrated.get("moved") or [], data, ext_id)
-        if migrated.get("backup_only"):
-            raise BootstrapError(
-                f"The new install of {ext_id} failed: {exc}. Files moved aside from a legacy install were put back. Fix the cause and run install.vfpy again."
-            ) from exc
-        raise BootstrapError(
-            f"The legacy install of {ext_id} was removed, but the new install failed: {exc}. Fix the cause and run install.vfpy again."
-        ) from exc
+        message = (
+            "Files moved aside from a legacy install were put back."
+            if migrated.get("backup_only") else "The previous legacy installation was restored."
+        )
+        error = BootstrapError(
+            f"The new install of {ext_id} failed: {exc}. {message} Fix the cause and run install.vfpy again."
+        )
+        if hasattr(exc, "installed_records"):
+            error.installed_records = exc.installed_records
+        raise error from exc
 
 
 def _mirror(source: Path, target: Path) -> bool:

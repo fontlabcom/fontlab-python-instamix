@@ -96,8 +96,10 @@ def required_api():
     gui = importlib.import_module(PKG + ".gui")
     if not callable(getattr(gui, "message", None)):
         raise ImportError("fontlab_instamix.gui.message must be callable")
+    bootstrap = importlib.import_module(PKG + ".bootstrap")
+    if not callable(getattr(bootstrap, "_legacy_rollback", None)):
+        raise ImportError("fontlab_instamix.bootstrap._legacy_rollback must be callable")
     if not SELF_INSTALL:
-        bootstrap = importlib.import_module(PKG + ".bootstrap")
         if not callable(getattr(bootstrap, "install_project", None)):
             raise ImportError("fontlab_instamix.bootstrap.install_project must be callable")
     return importlib.import_module(PKG)

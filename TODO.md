@@ -3,6 +3,8 @@ this_file: TODO.md
 ---
 # Remaining Issue 256 work
 
+- [ ] Independently review, integrate and publish the failed legacy-upgrade preservation fix; requalify whole-tree migration using the released provider and update consumer stubs before rollout.
+
 - [ ] Verify the implemented remote CLI against live FontLab: nonce, owned package, standalone and embedded imports; qualify Windows runtime separately.
 - [ ] Implement CrossOver/Wine execution and remote hook submission; ordinary same-OS remote CLI is implemented with offline regression evidence.
 - [ ] Qualify native PythonQt multi-file and folder selection in the serialized FontLab lane; static declarations and offline return-value tests pass.

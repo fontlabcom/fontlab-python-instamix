@@ -51,6 +51,19 @@ im.uninstall("com.example.hello")
 These calls use the data folder resolved above. Pass `data=Path("/scratch/FontLab 9")`
 to any of them to use an explicit folder (import `Path` from `pathlib`).
 
+## Legacy project upgrades
+
+Use the current shared installer before upgrading an old `install.vfpy`
+installation. Instamix 1.0.8 can remove other legacy-installed files after an
+unowned target blocks the replacement. The corrected bootstrap refuses that
+provider and obtains a replacement before deployment; if replacement fails,
+it keeps the previous provider and stops.
+
+The corrected project installer restores affected legacy files and receipts
+when replacement fails. If restoration itself fails, its error gives the
+retained recovery folder. Dependency installation has its own external effects;
+this guarantee concerns the project's deployed files and ownership records.
+
 ## Shared Python packages
 
 `install_packages(*specs, data=None)` installs distribution requirements, then

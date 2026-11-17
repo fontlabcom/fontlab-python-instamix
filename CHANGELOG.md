@@ -3,6 +3,32 @@ this_file: CHANGELOG.md
 ---
 # Changelog
 
+## 2026-11-17 — Failed legacy upgrade preservation
+
+A legacy project upgrade now keeps a private snapshot of its affected targets,
+shared tools, metadata and receipts until replacement succeeds. Installation,
+requirements, ledger, startup or launcher failure restores the prior bytes,
+links, modes and ownership state. Rollback failure retains recovery files and
+adds their location to the exception. External package-manager effects remain
+outside this file-deployment transaction; nonempty dependency folders are kept.
+A rolled-back project is removed from partial-success reports, preserving other
+completed records. Existing extension/ZIP partial-success behavior is unchanged.
+
+The common bootstrap requires this private rollback capability before reusing
+or accepting a provider. Published 1.0.8 lacks it and is replaced; failure to
+obtain a safe replacement preserves the prior provider and prevents deployment.
+The 1.0.8 release has a known legacy-upgrade defect: an unowned conflict can
+leave other old files removed. Do not use that version for legacy migration.
+
+Verified 399 arm64 Python 3.11 tests in 8.84 seconds; complete changed module
+bootstrap.py has 91% combined coverage. Six real historical-installer scenarios
+pass against an ordinary candidate-wheel prefix with whole-tree failure
+oracles, preserving 234 Examples or 224 Scriptmix entries on refusal. Actual
+published 1.0.8 rejection, failed-fetch preservation and candidate-wheel
+replacement pass. This is reviewed-source preparation, not release or native
+qualification; controller integration and independent review remain required.
+
+
 
 ## 2026-11-17 — Managed plugin migration safety
 
