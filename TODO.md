@@ -23,3 +23,4 @@ this_file: TODO.md
 
 - [ ] Reconcile the Plugmix consumer with released managed-plugin refusal/bootstrap readiness, retain its separate PyPI publisher gate, and qualify native/Windows installation.
 - [ ] Detect a Windows venv whose `pyvenv.cfg` home sits on a uv minor-version junction and recreate it (Issue 259).
+- [ ] Let instamix's own `install.vfpy` (`SELF_INSTALL`) install from the checkout it runs from instead of PyPI latest; today a checkout test silently installs the released version (Issue 259, F7).

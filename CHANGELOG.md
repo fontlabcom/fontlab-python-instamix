@@ -20,6 +20,10 @@ starting from an empty data folder:
 - The uv download falls back to the system `curl.exe` when FontLab's OpenSSL
   rejects GitHub's certificate chain; SHA-256 checking is unchanged.
 
+Released as 1.0.12 on PyPI. In Windows FontLab, a package `install.vfpy`
+with no sibling instamix checkout fetched the 1.0.12 wheel with the curl
+fallback, and a blank 14-package install plus the uv/PyPI smoke passed on it.
+
 Native evidence: uv downloaded (0.13.9), venv created, `humanize` and
 `tabulate` installed from PyPI and imported, `fontlab-fly` installed through
 `install.vfpy` with its sibling packages. Records are in the workspace
