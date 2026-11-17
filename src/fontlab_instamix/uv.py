@@ -12,9 +12,11 @@ import hashlib
 import io
 import os
 import shutil
+import ssl
 import subprocess
 import sys
 import tarfile
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -72,10 +74,49 @@ def asset_url(version: str | None = None, plat: str = sys.platform) -> str:
     return f"{base}/{asset_name(plat)}"
 
 
-def fetch_bytes(url: str) -> bytes:
-    """Download ``url`` (kept small so tests can replace it)."""
-    with urllib.request.urlopen(url, timeout=120) as response:
-        return response.read()
+def system_curl() -> Path | None:
+    """Windows' own ``curl.exe``; it verifies TLS with the system store (Schannel)."""
+    root = os.environ.get("SystemRoot", r"C:\Windows")
+    curl = Path(root) / "System32" / "curl.exe"
+    return curl if curl.is_file() else None
+
+
+def curl_bytes(url: str, curl: Path, runner=subprocess.run) -> bytes:
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    result = runner(
+        [str(curl), "-fsSL", "--max-time", "300", url],
+        capture_output=True,
+        stdin=subprocess.DEVNULL,
+        creationflags=flags,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", "replace").strip()
+        raise UvError(f"curl could not download {url}: {detail}")
+    return result.stdout
+
+
+def fetch_bytes(
+    url: str,
+    *,
+    plat: str = sys.platform,
+    urlopen=urllib.request.urlopen,
+    runner=subprocess.run,
+) -> bytes:
+    """Download ``url``.
+
+    FontLab's OpenSSL on Windows sees only the roots already in the Windows
+    store, so github.com can fail verification on a fresh machine. There the
+    system ``curl.exe`` (Schannel) is used instead; callers still check SHA-256.
+    """
+    try:
+        with urlopen(url, timeout=120) as response:
+            return response.read()
+    except urllib.error.URLError as error:
+        reason = getattr(error, "reason", error)
+        curl = system_curl() if plat == "win32" else None
+        if curl is None or not isinstance(reason, ssl.SSLCertVerificationError):
+            raise
+        return curl_bytes(url, curl, runner)
 
 
 def extract_binary(archive: bytes, name: str, plat: str = sys.platform) -> bytes:
@@ -112,7 +153,9 @@ def download(data: Path, version: str | None = None, fetch=fetch_bytes) -> Path:
     env.require_inside(data, target)
     env.require_inside(data, temp)
     if target.is_symlink() or temp.is_symlink() or temp.exists():
-        raise UvError(f"refusing linked uv destination or occupied temporary path: {target}, {temp}")
+        raise UvError(
+            f"refusing linked uv destination or occupied temporary path: {target}, {temp}"
+        )
     payload = extract_binary(archive, name)
     target.parent.mkdir(parents=True, exist_ok=True)
     temp.write_bytes(payload)
@@ -138,16 +181,43 @@ def ensure(data: Path, *, allow_download: bool = True) -> Path:
     return download(data)
 
 
+def python_install_dir(data: Path) -> Path:
+    """Private folder for uv-managed Pythons: ``<data>/python/uv/python``."""
+    return Path(data) / "python" / "uv" / "python"
+
+
+def run_env(data: Path | None) -> dict[str, str] | None:
+    """Environment for uv on Windows, or ``None`` to inherit it unchanged.
+
+    uv's default managed-Python folder holds directory junctions such as
+    ``cpython-3.12-windows-x86_64-none``. Processes started from FontLab 9 on
+    Windows cannot follow them (os error 448, untrusted mount point), so every
+    uv command that inspects an interpreter fails. A private install folder
+    under ``<data>`` contains no junctions. A user setting is kept.
+    """
+    if sys.platform != "win32" or data is None:
+        return None
+    if os.environ.get("UV_PYTHON_INSTALL_DIR"):
+        return None
+    return {**os.environ, "UV_PYTHON_INSTALL_DIR": str(python_install_dir(data))}
+
+
 def run(
-    uv: Path, args: list[str], runner=subprocess.run
+    uv: Path, args: list[str], runner=subprocess.run, *, data: Path | None = None
 ) -> subprocess.CompletedProcess:
-    """Run ``uv <args>``; raise :class:`UvError` on failure."""
+    """Run ``uv <args>``; raise :class:`UvError` on failure.
+
+    Pass ``data`` so that on Windows uv keeps its Pythons in ``<data>``.
+    """
     command = [str(uv), *args]
     extra = (
         {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
         if sys.platform == "win32"
         else {}
     )
+    environment = run_env(data)
+    if environment is not None:
+        extra["env"] = environment
     try:
         result = runner(command, capture_output=True, text=True, timeout=300, **extra)
     except (OSError, subprocess.TimeoutExpired) as exc:

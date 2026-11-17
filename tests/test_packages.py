@@ -151,3 +151,42 @@ def test_uninstall_when_record_entry_is_symlink_then_link_removed_not_target(
     (info / "RECORD").write_text("linked.py,,\n")
     packages.uninstall(data, "lk")
     assert not (site / "linked.py").is_symlink() and real.read_text() == "keep"
+
+
+class EnvRecorder(Recorder):
+    def __init__(self):
+        super().__init__()
+        self.envs = []
+
+    def __call__(self, argv, **kwargs):
+        self.envs.append(kwargs.get("env"))
+        return super().__call__(argv, **kwargs)
+
+
+def test_uv_run_when_windows_then_private_python_install_dir(
+    data, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.delenv("UV_PYTHON_INSTALL_DIR", raising=False)
+    run = EnvRecorder()
+    packages.install(data, ["x"], uv_bin=tmp_path / "uv", runner=run)
+    expected = str(data / "python" / "uv" / "python")
+    assert run.envs, "uv was not called"
+    for argv, environment in zip(run.calls, run.envs):
+        if argv[0] != str(tmp_path / "uv"):
+            continue
+        assert environment is not None, (
+            f"uv {argv[1:3]} ran without a private install dir"
+        )
+        assert environment["UV_PYTHON_INSTALL_DIR"] == expected
+
+
+def test_uv_run_when_user_sets_install_dir_then_kept(data, tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setenv("UV_PYTHON_INSTALL_DIR", str(tmp_path / "mine"))
+    assert uv.run_env(data) is None
+
+
+def test_uv_run_when_macos_then_environment_inherited(data, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert uv.run_env(data) is None

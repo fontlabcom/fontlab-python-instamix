@@ -4,6 +4,26 @@ this_file: CHANGELOG.md
 
 # Changelog
 
+## 2026-11-17 — Windows FontLab 9 uv bootstrap (Issue 259)
+
+Tested in FontLab 9.1.9813 for Windows (x64 on Windows 11 ARM, Parallels),
+starting from an empty data folder:
+
+- uv venv requests now pin the host's exact Python patch version
+  (`cpython-3.11.9-windows-x86_64-none`) inside FontLab. A minor-only request
+  made uv follow its `cpython-3.11-…` directory junction, which processes
+  started from FontLab cannot cross (os error 448, untrusted mount point).
+- On Windows, uv keeps its managed Python in `<data>/python/uv/python`
+  (`UV_PYTHON_INSTALL_DIR`, unless the user set it), away from junctions
+  in `%APPDATA%\uv\python`.
+- The uv download falls back to the system `curl.exe` when FontLab's OpenSSL
+  rejects GitHub's certificate chain; SHA-256 checking is unchanged.
+
+Native evidence: uv downloaded (0.13.9), venv created, `humanize` and
+`tabulate` installed from PyPI and imported, `fontlab-fly` installed through
+`install.vfpy` with its sibling packages. Records are in the workspace
+`WORK/issue259/results/`. macOS native behaviour was not retested.
+
 ## 2026-11-17 — Remopy release qualification
 
 Remopy 2.0.7 includes the Wine/CrossOver providers and CLI routing in its

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -30,11 +31,23 @@ def python(venv: Path, plat: str | None = None) -> Path:
     )
 
 
-def request(target: env.Target) -> str:
+def request(target: env.Target, *, host: str | None = None) -> str:
+    """uv interpreter request for ``target``.
+
+    Inside FontLab the exact host version (``3.11.9``) is requested. uv then
+    uses that patch install directly instead of its ``cpython-3.11-...``
+    minor-version link, a directory junction on Windows that processes started
+    by FontLab cannot traverse (os error 448).
+    """
     os_name = {"darwin": "macos", "win32": "windows", "linux": "linux"}[target.platform]
     arch = "aarch64" if target.arch == "arm64" else "x86_64"
     libc = "gnu" if target.platform == "linux" else "none"
-    return f"cpython-{target.version}-{os_name}-{arch}-{libc}"
+    if host is None and "fontlab" in sys.modules:
+        host = platform.python_version()
+    version = (
+        host if host and host.rsplit(".", 1)[0] == target.version else target.version
+    )
+    return f"cpython-{version}-{os_name}-{arch}-{libc}"
 
 
 def probe(folder: Path, target: env.Target, runner=subprocess.run) -> Path:
@@ -87,7 +100,10 @@ def create(
         raise ValueError("site-packages path cannot contain a newline")
     if not folder.exists():
         uv.run(
-            uv_bin, ["venv", "--python", request(target), str(folder)], runner=runner
+            uv_bin,
+            ["venv", "--python", request(target), str(folder)],
+            runner=runner,
+            data=data,
         )
     purelib = probe(folder, target, runner)
     pth = purelib / PTH

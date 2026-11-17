@@ -178,3 +178,13 @@ def test_explicit_version_list_and_remove(data):
     assert packages.listed(data, target=target) == [("demo", "1.0")]
     assert packages.listed(data) == []
     assert packages.uninstall(data, "demo", target=target) == ["demo.py"]
+
+
+def test_request_when_host_patch_known_then_pins_patch():
+    target = env.Target("3.11", "win32", "x86_64")
+    assert venv.request(target, host="3.11.9") == "cpython-3.11.9-windows-x86_64-none"
+
+
+def test_request_when_host_minor_differs_then_uses_target_minor():
+    target = env.Target("3.11", "win32", "x86_64")
+    assert venv.request(target, host="3.13.2") == "cpython-3.11-windows-x86_64-none"

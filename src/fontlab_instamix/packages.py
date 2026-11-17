@@ -64,7 +64,7 @@ def install(
     args = install_args(data, specs, upgrade=upgrade, target=target)
     uv_bin = uv_bin or uv.ensure(data)
     venv.create(data, uv_bin, runner=runner, target=target)
-    result = uv.run(uv_bin, args, runner=runner)
+    result = uv.run(uv_bin, args, runner=runner, data=data)
     importlib.invalidate_caches()
     return result
 
