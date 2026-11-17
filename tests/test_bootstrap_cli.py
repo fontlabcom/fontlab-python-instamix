@@ -174,3 +174,9 @@ def test_message_when_pythonqt_present_then_prints_without_dialog(capsys, monkey
     out = capsys.readouterr().out
     assert "Instamix: Installed x 1.0" in out
     assert "Uninstall error: bad" in out
+
+
+def test_cli_when_manifest_selected_then_extension_installed(data, example, capsys):
+    assert cli.main(["--data-dir", str(data), "ext", "install", str(example / "manifest.fontlabextj")]) == 0
+    assert "com.example.hello" in capsys.readouterr().out
+    assert (data / "Scripts" / "com.example.hello" / "Hello.py").is_file()

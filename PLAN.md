@@ -86,9 +86,11 @@ Unknown `{var}` or `..` escape is an error. Targets: `Scripts`, `Actions`,
 
 - `uv` fetched once from GitHub releases (stdlib urllib + zip/tar, sha256 from
   release file) into `<data>/python/uv/`.
-- `<data>/.venv` created with `uv venv --python <FontLab version>`; installs
-  use `uv pip install --target <data>/python/3.11/site-packages --python-version
-  3.11 --python-platform <platform>` so no separate interpreter needs to match.
+- `<data>/.venv` uses a qualified CPython version/OS/architecture request and a
+  bounded runtime probe. Its owned `.pth` references the canonical package
+  directory; installs use the verified interpreter and that same `--target`.
+  Actual offline arm64 Python 3.11 import works through both the venv and direct
+  canonical path. Embedded-host and Windows runtime acceptance remain open.
 
 ## CLI via remopy
 
@@ -127,3 +129,23 @@ the running FontLab when a live answer is needed.
 
 - `.pth`, symlinked-directory and `.vfpy`-from-argv behaviour are source
   inferences until the live tests confirm them.
+
+## Implementation review, 2026-11-17
+
+First increment accepts a root manifest as the installation entry point, reusing
+the folder installation path and its existing basename substitution. CLI callers
+inherit it. No dependencies or new deployment mechanism are needed.
+
+Next prioritize filesystem containment and public API correctness, then target
+environment/venv coherence, remote CLI, consumer migration and native checks.
+Use existing helpers and test each boundary before release. The current offline
+suite does not establish native or cross-platform installation acceptance.
+
+- [ ] Verify the implemented remote CLI against live FontLab: nonce, owned package, standalone and embedded imports; qualify Windows runtime separately.
+- [ ] Implement CrossOver/Wine execution and remote hook submission; ordinary same-OS remote CLI is implemented with offline regression evidence.
+- [ ] Complete picker support for manifests and multiple archives, and verify native PythonQt behavior.
+- [ ] Reconcile consumer installers and environment helpers, then verify macOS/native and Windows/CrossOver workflows.
+- [ ] Independently review and integrate verified changes through repository gates; retain unverified native/release outcomes.
+
+- [ ] Independently review generated-file rollback and qualify it on native/Windows installations; offline failure recovery passes.
+- [ ] Complete draft plugin wrapping with the supported plugin bundle structure and installable artifacts.

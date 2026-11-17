@@ -11,11 +11,13 @@ errors. The first path part names the target, matched case-insensitively.
 from __future__ import annotations
 
 import re
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
+
+from . import env
 
 TARGETS = ("Scripts", "Actions", "Codepage", "Data", "Encoding", "Extensions", "site-packages")
 RESERVED = {"extensions": {".instamix", "library"}}  # instamix's own folders
-SITE_PACKAGES = "python/3.11/site-packages"
+SITE_PACKAGES = "python/3.11/site-packages"  # Compatibility constant; not live path authority.
 _VAR = re.compile(r"\{([^{}]*)\}")
 
 
@@ -31,9 +33,9 @@ def target_name(name: str) -> str:
     raise DestError(f"unknown target {name!r}; use one of {', '.join(TARGETS)}")
 
 
-def target_root(target: str) -> str:
+def target_root(target: str, *, version: str | None = None) -> str:
     """Return the data-folder-relative directory of a canonical target."""
-    return SITE_PACKAGES if target == "site-packages" else target
+    return env.site_packages(Path(), version=version).as_posix() if target == "site-packages" else target
 
 
 def expand(text: str, basename: str, variables: dict[str, str]) -> str:
@@ -53,7 +55,7 @@ def expand(text: str, basename: str, variables: dict[str, str]) -> str:
     return _VAR.sub(sub, text)
 
 
-def resolve(rule: str, basename: str, variables: dict[str, str] | None = None) -> str:
+def resolve(rule: str, basename: str, variables: dict[str, str] | None = None, *, version: str | None = None) -> str:
     """Resolve ``rule`` to a POSIX path relative to the data folder.
 
     The result is a directory: sources are placed inside it.
@@ -68,7 +70,7 @@ def resolve(rule: str, basename: str, variables: dict[str, str] | None = None) -
         raise DestError(f"destination escapes its target: {rule!r}")
     if any("\\" in p or ":" in p for p in parts):  # Windows separators or drives
         raise DestError(f"destination parts may not contain '\\' or ':': {expanded!r}")
-    root = target_root(target_name(parts[0]))
+    root = target_root(target_name(parts[0]), version=version)
     reserved = RESERVED.get(root.lower())
     if reserved is not None and (len(parts) < 2 or parts[1].lower() in reserved):
         raise DestError(f"{root} needs a subfolder other than {', '.join(sorted(reserved))}: {rule!r}")

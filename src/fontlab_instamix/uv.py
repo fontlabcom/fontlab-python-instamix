@@ -66,7 +66,9 @@ def asset_name(plat: str = sys.platform) -> str:
 
 
 def asset_url(version: str | None = None, plat: str = sys.platform) -> str:
-    base = f"{RELEASES}/download/{version}" if version else f"{RELEASES}/latest/download"
+    base = (
+        f"{RELEASES}/download/{version}" if version else f"{RELEASES}/latest/download"
+    )
     return f"{base}/{asset_name(plat)}"
 
 
@@ -102,11 +104,18 @@ def download(data: Path, version: str | None = None, fetch=fetch_bytes) -> Path:
     expected = fetch(url + ".sha256").decode("ascii", "replace").split()[0].lower()
     actual = hashlib.sha256(archive).hexdigest()
     if expected != actual:
-        raise UvError(f"uv checksum mismatch for {name}: expected {expected}, got {actual}")
+        raise UvError(
+            f"uv checksum mismatch for {name}: expected {expected}, got {actual}"
+        )
     target = local_uv(data)
-    target.parent.mkdir(parents=True, exist_ok=True)
     temp = target.with_name(target.name + ".tmp")
-    temp.write_bytes(extract_binary(archive, name))
+    env.require_inside(data, target)
+    env.require_inside(data, temp)
+    if target.is_symlink() or temp.is_symlink() or temp.exists():
+        raise UvError(f"refusing linked uv destination or occupied temporary path: {target}, {temp}")
+    payload = extract_binary(archive, name)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp.write_bytes(payload)
     temp.chmod(0o755)
     temp.replace(target)
     return target
@@ -116,17 +125,33 @@ def ensure(data: Path, *, allow_download: bool = True) -> Path:
     """Return uv, downloading it if needed and allowed."""
     found = find(data)
     if found:
-        return found
+        target = local_uv(data)
+        env.require_inside(data, target)
+        if found != target:
+            if target.exists() or target.is_symlink():
+                raise UvError(f"uv destination already exists: {target}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(found, target)
+        return target
     if not allow_download:
         raise UvError("uv not found; run: fontlab-instamix uv fetch")
     return download(data)
 
 
-def run(uv: Path, args: list[str], runner=subprocess.run) -> subprocess.CompletedProcess:
+def run(
+    uv: Path, args: list[str], runner=subprocess.run
+) -> subprocess.CompletedProcess:
     """Run ``uv <args>``; raise :class:`UvError` on failure."""
     command = [str(uv), *args]
-    extra = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if sys.platform == "win32" else {}
-    result = runner(command, capture_output=True, text=True, **extra)
+    extra = (
+        {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
+        if sys.platform == "win32"
+        else {}
+    )
+    try:
+        result = runner(command, capture_output=True, text=True, timeout=300, **extra)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise UvError(f"uv command could not complete: {exc}") from exc
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()
         raise UvError(f"uv {' '.join(args)} failed ({result.returncode}): {detail}")

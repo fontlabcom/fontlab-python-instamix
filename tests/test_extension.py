@@ -222,3 +222,63 @@ def test_install_when_requirements_fail_then_ledger_still_written(data, tmp_path
     assert ledger.read(data, "com.example.req")["requires_failed"] is True
     extension.uninstall("com.example.req", data)
     assert not (data / "Scripts" / "com.example.req").exists()
+
+
+@pytest.mark.parametrize("filename", ["manifest.fontlabextj", "MANIFEST.FONTLABEXTJ"])
+def test_install_when_manifest_selected_then_parent_identity_preserved(data, example, filename):
+    folder = example
+    selected = folder / filename
+    (folder / "manifest.fontlabextj").rename(selected)
+    [record] = extension.install(selected, data, requirements=_no_reqs)
+    assert record["id"] == "com.example.hello"
+    assert record["basename"] == "com.example.hello"
+    assert (data / "Scripts" / "com.example.hello" / "Hello.py").is_file()
+
+
+@pytest.mark.parametrize("filename", ["other.fontlabextj", "manifest.json", "missing.fontlabextj"])
+def test_install_when_wrong_manifest_filename_then_rejected(data, example, filename):
+    selected = example / filename
+    if not filename.startswith("missing"):
+        selected.write_text((example / "manifest.fontlabextj").read_text())
+    with pytest.raises(InstallError):
+        extension.install(selected, data, requirements=_no_reqs)
+    assert not (data / "Extensions").exists()
+
+
+def test_install_when_manifest_outside_extension_folder_then_rejected(data, example):
+    folder = example.with_name("ordinary-folder")
+    example.rename(folder)
+    with pytest.raises(InstallError):
+        extension.install(folder / "manifest.fontlabextj", data, requirements=_no_reqs)
+    assert not (data / "Extensions").exists()
+
+
+@pytest.mark.parametrize("entry", ["folder", "manifest", "archive"])
+def test_public_api_when_data_omitted_then_uses_environment(data, example, tmp_path, entry):
+    import fontlab_instamix as im
+
+    source = example
+    if entry == "manifest":
+        source = example / "manifest.fontlabextj"
+    elif entry == "archive":
+        source = wrap.make_zip([example], tmp_path / "Hello.fontlabextz")
+    assert im.installed() == []
+    [record] = im.install(str(source))
+    assert record["id"] == "com.example.hello"
+    assert (data / "Scripts" / "com.example.hello" / "Hello.py").is_file()
+    assert [r["id"] for r in im.installed()] == ["com.example.hello"]
+    assert im.uninstall("com.example.hello") == []
+    assert im.installed() == []
+    assert not (data / "Scripts" / "com.example.hello").exists()
+
+
+def test_public_api_when_data_explicit_then_overrides_environment(data, example, tmp_path):
+    import fontlab_instamix as im
+
+    explicit = tmp_path / "explicit"
+    im.install(example, explicit)
+    assert im.installed() == []
+    assert [r["id"] for r in im.installed(explicit)] == ["com.example.hello"]
+    assert not (data / "Extensions").exists()
+    assert im.uninstall("com.example.hello", explicit) == []
+    assert im.installed(explicit) == []

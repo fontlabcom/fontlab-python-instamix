@@ -15,6 +15,10 @@ def _data(args) -> Path:
     return env.data_dir(args.data_dir)
 
 
+def _target(args) -> dict:
+    return {"target": args.target} if getattr(args, "target", None) else {}
+
+
 def cmd_env(args) -> int:
     print(json.dumps(env.describe(_data(args)), indent=2))
     return 0
@@ -23,7 +27,7 @@ def cmd_env(args) -> int:
 def cmd_ext_install(args) -> int:
     data = _data(args)
     for path in args.paths:
-        for record in extension.install(Path(path), data, copy=args.copy or None, run_hooks=args.run_hooks):
+        for record in extension.install(Path(path), data, copy=args.copy or None, run_hooks=args.run_hooks, **_target(args)):
             print(f"installed {record['id']} {record['version']} ({len(record['entries'])} paths)")
     return 0
 
@@ -46,7 +50,7 @@ def cmd_ext_list(args) -> int:
 
 def cmd_pkg_install(args) -> int:
     data = _data(args)
-    result = packages.install(data, args.specs, upgrade=args.upgrade)
+    result = packages.install(data, args.specs, upgrade=args.upgrade, **_target(args))
     print((result.stdout or "").strip() or "done")
     return 0
 
@@ -54,13 +58,13 @@ def cmd_pkg_install(args) -> int:
 def cmd_pkg_uninstall(args) -> int:
     data = _data(args)
     for name in args.names:
-        removed = packages.uninstall(data, name)
+        removed = packages.uninstall(data, name, **_target(args))
         print(f"removed {name} ({len(removed)} files)")
     return 0
 
 
 def cmd_pkg_list(args) -> int:
-    for name, version in packages.listed(_data(args)):
+    for name, version in packages.listed(_data(args), **_target(args)):
         print(f"{name}\t{version}")
     return 0
 
@@ -72,6 +76,11 @@ def cmd_wrap(args) -> int:
     print(folder)
     if args.zip:
         print(wrap.make_zip([folder], folder.with_suffix(".fontlabextz")))
+    return 0
+
+
+def cmd_pack(args) -> int:
+    print(wrap.make_zip([Path(folder) for folder in args.folders], Path(args.out)))
     return 0
 
 
@@ -89,7 +98,7 @@ def cmd_uv_fetch(args) -> int:
 
 def cmd_venv(args) -> int:
     data = _data(args)
-    print(venv.create(data, uv.ensure(data)))
+    print(venv.create(data, uv.ensure(data), **_target(args)))
     return 0
 
 
@@ -103,6 +112,8 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="fontlab-instamix", description="Install extensions and packages into FontLab 9.")
     p.add_argument("--version", action="version", version=__version__)
     p.add_argument("--data-dir", help=f"FontLab data folder (default: ${env.DATA_ENV} or FontLab's own)")
+    p.add_argument("--remote", action="store_true", help="target the running FontLab through optional Remopy")
+    p.add_argument("--bridge", help="Remopy bridge executable (requires --remote)")
     sub = p.add_subparsers(dest="command", required=True)
 
     sub.add_parser("env", help="show Python, platform and FontLab folders").set_defaults(func=cmd_env)
@@ -139,6 +150,11 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--zip", action="store_true", help="also write a .fontlabextz")
     s.set_defaults(func=cmd_wrap)
 
+    s = sub.add_parser("pack", help="pack extension folders into one .fontlabextz")
+    s.add_argument("folders", nargs="+")
+    s.add_argument("--out", required=True)
+    s.set_defaults(func=cmd_pack)
+
     s = sub.add_parser("bootstrap", help="install a project checkout using its [tool.fontlab-install]")
     s.add_argument("project", nargs="?", default=".")
     s.add_argument("--copy", action="store_true")
@@ -162,6 +178,12 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        if args.remote:
+            from . import remote
+
+            return remote.execute(args)
+        if args.bridge:
+            raise ValueError("--bridge requires --remote")
         return args.func(args)
     except (OSError, ValueError, RuntimeError) as error:
         print(f"fontlab-instamix: {error}", file=sys.stderr)

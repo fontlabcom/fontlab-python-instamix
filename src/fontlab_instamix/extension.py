@@ -14,6 +14,7 @@ import fnmatch
 import os
 import runpy
 import shutil
+import stat
 import sys
 import tempfile
 import zipfile
@@ -96,15 +97,18 @@ class Placement:
         return Path(path).relative_to(self.data).as_posix()
 
     def mkdirs(self, folder: Path) -> None:
+        env.require_inside(self.data, folder / ".instamix-check")
         missing = []
         while not folder.exists():
             missing.append(folder)
             folder = folder.parent
         for item in reversed(missing):
+            env.require_inside(self.data, item / ".instamix-check")
             item.mkdir()
             self.entries.append({"path": self.rel(item), "kind": "dir"})
 
     def place(self, source: Path, target: Path) -> None:
+        env.require_inside(self.data, target)
         if target.exists() or target.is_symlink():
             raise InstallError(f"refusing to overwrite existing {target}")
         self.mkdirs(target.parent)
@@ -146,8 +150,8 @@ def sources(folder: Path, pattern: str) -> list[tuple[Path, str]]:
     A folder contributes all its files (its contents go into the destination);
     a file or glob contributes the files themselves.
     """
-    pattern = pattern.replace("\\", "/").strip("/")
-    if ".." in PurePosixPath(pattern).parts or pattern.startswith("/"):
+    pattern = pattern.replace("\\", "/")
+    if ".." in PurePosixPath(pattern).parts or pattern.startswith("/") or ":" in pattern:
         raise InstallError(f"'from' must stay inside the extension: {pattern!r}")
     matches = sorted(folder.glob(pattern)) if any(c in pattern for c in "*?[") else [folder / pattern]
     found = []
@@ -163,15 +167,16 @@ def sources(folder: Path, pattern: str) -> list[tuple[Path, str]]:
     return [(path, rel) for path, rel in found if not fnmatch.fnmatch(path.name.lower(), manifest.MANIFEST)]
 
 
-def plan(folder: Path, info: manifest.Manifest, name: str, data: Path) -> list[tuple[Path, Path]]:
+def plan(folder: Path, info: manifest.Manifest, name: str, data: Path, *, version: str | None = None) -> list[tuple[Path, Path]]:
     """Return ``(source, target)`` pairs for every file the manifest installs."""
     pairs = []
     for rule in info.install:
-        target_dir = Path(data) / dest.resolve(rule.to, name, info.vars)
+        target_dir = Path(data) / dest.resolve(rule.to, name, info.vars, version=version)
         for source, rel in sources(folder, rule.source):
             pairs.append((source, target_dir / rel))
-    site = env.site_packages(data)
+    site = env.site_packages(data, version=version)
     for package in info.packages:
+        check_member(package)
         source = folder / package
         if not source.is_dir() or ".." in PurePosixPath(package).parts:
             raise InstallError(f"python package {package!r} is not a folder in {folder.name}")
@@ -189,8 +194,17 @@ def library_path(data: Path, ext_id: str) -> Path:
     return Path(data) / LIBRARY / f"{ledger.check_id(ext_id)}{EXT}"
 
 
-def stage(folder: Path, target: Path) -> None:
+def _check_library(data: Path, library: Path) -> None:
+    for suffix in ("", ".new", ".old", ".prev"):
+        path = library.with_name(library.name + suffix)
+        env.require_inside(data, path)
+        if path.is_symlink():
+            raise InstallError(f"refusing symlinked Library staging path: {path}")
+
+
+def stage(folder: Path, target: Path, data: Path) -> None:
     """Copy ``folder`` to ``target``, replacing an older copy at the last moment."""
+    _check_library(data, target)
     target.parent.mkdir(parents=True, exist_ok=True)
     fresh = target.with_name(target.name + ".new")
     old = target.with_name(target.name + ".old")
@@ -211,15 +225,15 @@ def install_folder(
     *,
     copy: bool | None = None,
     requirements=None,
+    target: env.Target | None = None,
     editable: bool = False,
-    finish=None,
+    generated: list[tuple[Path, Path]] | None = None,
     fields: dict | None = None,
 ) -> dict:
     """Install one unpacked ``.fontlabext`` folder; return its ledger record.
 
-    ``finish(data)`` may create more files after placement (dist-info,
-    launchers) and returns them in creation order, folders first; they are
-    recorded as owned entries. ``fields`` adds keys to the ledger record.
+    ``generated`` supplies prebuilt (source, target) file pairs copied into
+    the same transaction. ``fields`` adds keys to the ledger record.
 
     ``requirements`` is called as ``requirements(data, list_of_specs)`` when
     the manifest lists ``python.requires`` (``packages.install`` by default).
@@ -230,64 +244,122 @@ def install_folder(
     data = Path(data)
     info = manifest.load(folder)
     name = basename(folder)
-    env.ensure_folders(data)
+    if name != info.id:
+        raise InstallError(f"extension folder basename {name!r} must match manifest id {info.id!r}")
+    version = target.version if target else None
+    pairs = plan(folder, info, name, data, version=version)
+    generated = generated or []
+    env.check_folders(data, version=version)
+    ledger.check_paths(data, info.id)
     library = library_path(data, info.id)
-    pairs = plan(folder, info, name, data)  # validate before touching anything
+    _check_library(data, library)
+    for _, destination in [*pairs, *generated]:
+        env.require_inside(data, destination)
+    env.ensure_folders(data, version=version)
     previous = ledger.read(data, info.id)
     backup = library.with_name(library.name + ".prev")
     if backup.exists() or backup.is_symlink():
         _remove_tree(data, backup)
     placement = Placement(data, default_copy() if copy is None else copy)
-    removed: list[dict] = []
-    try:
-        if previous:
-            removed = _remove_tracked(data, previous.get("entries", []))
-        if library.exists():
-            library.rename(backup)  # kept until the new version is fully placed
-        if editable:
-            with tempfile.TemporaryDirectory(prefix="instamix-stage-") as temp:
-                shutil.copy2(manifest.find(folder), Path(temp) / manifest.MANIFEST)
-                stage(Path(temp), library)
-        else:
-            stage(folder, library)
-        for source, target in pairs:
-            origin = source.resolve() if editable else library / source.relative_to(folder)
-            placement.place(origin, target)
-        if finish:
-            placement.entries += generated_entries(data, finish(data))
-    except Exception:
-        # Roll back: drop the new files, bring back the old Library copy and links.
-        remove_entries(data, placement.entries)
-        if library.exists() or library.is_symlink():
-            _remove_tree(data, library)
-        if backup.exists():
-            backup.rename(library)
-        restore_entries(data, removed)
-        raise
-    if backup.exists():
-        _remove_tree(data, backup)
-    record = {
-        "id": info.id,
-        "name": info.name,
-        "version": info.version,
-        "basename": name,
-        "library": placement.rel(library),
-        "requires": list(info.requires),
-        "entries": placement.entries,
-        **(fields or {}),
+    generated_placement = Placement(data, True)
+    generated_dirs = [target for source, target in generated if source.is_dir()]
+    record_path = ledger.record_path(data, info.id)
+    ledger_paths = (record_path, record_path.with_suffix(".tmp"), ledger.ledger_dir(data) / ledger.LOG)
+    ledger_before = {
+        path: (path.read_bytes(), stat.S_IMODE(path.stat().st_mode)) if path.exists() else None
+        for path in ledger_paths
     }
-    if info.requires:
-        if requirements is None:
-            from . import packages
-
-            requirements = packages.install
+    requirement_error = None
+    with tempfile.TemporaryDirectory(prefix="instamix-rollback-") as temp:
+        removed = []
+        directory_modes = {}
+        # Snapshot actual installed bytes: generated records may have no source.
+        for entry in previous.get("entries", []) if previous else []:
+            path = _entry_path(data, entry)
+            if path is None or not _ours(path, entry):
+                continue
+            saved = dict(entry)
+            if entry["kind"] == "dir":
+                directory_modes[path] = stat.S_IMODE(path.stat().st_mode)
+            if entry["kind"] == "copy":
+                snapshot = Path(temp) / str(len(removed))
+                shutil.copy2(path, snapshot)
+                saved["source"] = str(snapshot)
+            removed.append(saved)
+        library_changed = False
+        ledger_attempted = False
         try:
-            requirements(data, list(info.requires))
+            if previous:
+                _remove_tracked(data, previous.get("entries", []))
+            if library.exists():
+                library.rename(backup)
+            library_changed = True
+            if editable:
+                with tempfile.TemporaryDirectory(prefix="instamix-stage-") as staging:
+                    shutil.copy2(manifest.find(folder), Path(staging) / manifest.MANIFEST)
+                    stage(Path(staging), library, data)
+            else:
+                stage(folder, library, data)
+            for source, destination in pairs:
+                origin = source.resolve() if editable else library / source.relative_to(folder)
+                placement.place(origin, destination)
+            for source, destination in generated:
+                generated_placement.place(source, destination)
+            record = {
+                "id": info.id,
+                "name": info.name,
+                "version": info.version,
+                "basename": name,
+                "library": placement.rel(library),
+                "requires": list(info.requires),
+                # Intermediate generated parents (e.g. the shared launcher folder) are not owned.
+                "entries": placement.entries + [
+                    entry for entry in generated_placement.entries
+                    if entry["kind"] != "dir" or any(
+                        (data / entry["path"]).is_relative_to(folder) for folder in generated_dirs
+                    )
+                ],
+                **(fields or {}),
+            }
+            if info.requires:
+                if requirements is None:
+                    from functools import partial
+
+                    from . import packages
+
+                    requirements = partial(packages.install, target=target) if target else packages.install
+                try:
+                    requirements(data, list(info.requires))
+                except Exception as error:  # noqa: BLE001 - commit partial install before re-raising
+                    record["requires_failed"] = True
+                    requirement_error = error
+            ledger_attempted = True
+            ledger.write(data, record)
         except Exception:
-            record["requires_failed"] = True
-            ledger.write(data, record)  # files are in place; uninstall must still find them
+            remove_entries(data, placement.entries + generated_placement.entries)
+            if library_changed:
+                if library.exists() or library.is_symlink():
+                    _remove_tree(data, library)
+                if backup.exists():
+                    backup.rename(library)
+            restore_modes = {path: mode for path, mode in directory_modes.items() if not path.exists()}
+            restore_entries(data, list(reversed(removed)))
+            # Restore restrictive directory permissions only after all descendants exist.
+            for path, mode in reversed(restore_modes.items()):
+                path.chmod(mode)
+            if ledger_attempted:
+                for path, content in ledger_before.items():
+                    ledger._check_file(data, path)
+                    if content is None:
+                        path.unlink(missing_ok=True)
+                    else:
+                        path.write_bytes(content[0])
+                        path.chmod(content[1])
             raise
-    ledger.write(data, record)
+        if backup.exists():
+            _remove_tree(data, backup)
+    if requirement_error is not None:
+        raise requirement_error
     return record
 
 
@@ -305,19 +377,24 @@ def generated_entries(data: Path, paths: list[Path]) -> list[dict]:
 
 def install(
     path: Path,
-    data: Path,
+    data: Path | None = None,
     *,
     copy: bool | None = None,
     run_hooks: bool = False,
     requirements=None,
+    target: env.Target | None = None,
 ) -> list[dict]:
-    """Install a ``.fontlabext`` folder or every folder in a ``.fontlabextz``."""
+    """Install an extension folder, its manifest, or all folders in an archive."""
+    if data is None:
+        data = env.data_dir()
     path = Path(path)
+    if path.is_file() and path.name.lower() == manifest.MANIFEST:
+        path = path.parent
     if is_zip(path) and path.is_file():
         with tempfile.TemporaryDirectory(prefix="instamix-") as temp:
             records, hooks = [], []
             for folder in unpack(path, Path(temp)):
-                records.append(install_folder(folder, data, copy=copy, requirements=requirements))
+                records.append(install_folder(folder, data, copy=copy, requirements=requirements, target=target))
                 hook = hook_for(folder)
                 if hook and hook not in hooks:
                     hooks.append(hook)
@@ -328,8 +405,8 @@ def install(
                     print(f"instamix: hook {hook.name} failed: {error}", file=sys.stderr)
             return records
     if path.is_dir() and is_ext(path):
-        return [install_folder(path, data, copy=copy, requirements=requirements)]
-    raise InstallError(f"not a {EXT} folder or {ZIP} file: {path}")
+        return [install_folder(path, data, copy=copy, requirements=requirements, target=target)]
+    raise InstallError(f"not a {EXT} folder, its {manifest.MANIFEST}, or {ZIP} file: {path}")
 
 
 def _ours(path: Path, entry: dict) -> bool:
@@ -342,9 +419,7 @@ def _ours(path: Path, entry: dict) -> bool:
 
 def inside(data: Path, path: Path) -> bool:
     """True if ``path`` lies inside ``data``; the last part is not followed."""
-    root = Path(os.path.realpath(data))
-    parent = Path(os.path.realpath(Path(path).parent))
-    return (parent == root or root in parent.parents) and Path(path).name not in ("", ".", "..")
+    return env.inside(data, path)
 
 
 def _entry_path(data: Path, entry: dict) -> Path | None:
@@ -442,9 +517,12 @@ def uninstall_links(data: Path, record: dict) -> list[str]:
     return remove_entries(data, record.get("entries", []))
 
 
-def uninstall(ext_id: str, data: Path) -> list[str]:
+def uninstall(ext_id: str, data: Path | None = None) -> list[str]:
     """Uninstall ``ext_id``; return paths left in place because they changed."""
+    if data is None:
+        data = env.data_dir()
     try:
+        ledger.check_paths(data, ext_id)
         record = ledger.read(data, ext_id)
     except ledger.LedgerError as error:
         raise InstallError(str(error)) from error
@@ -468,5 +546,7 @@ def uninstall(ext_id: str, data: Path) -> list[str]:
     return kept
 
 
-def installed(data: Path) -> list[dict]:
+def installed(data: Path | None = None) -> list[dict]:
+    if data is None:
+        data = env.data_dir()
     return ledger.records(data)

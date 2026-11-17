@@ -16,6 +16,55 @@ this_file: CHANGELOG.md
   `.github/workflows/docs.yml` rebuilds and checks it on every main commit;
   `tests_docs/` holds 35 site tests.
 
+## Unreleased — standalone installer and ZIP packaging (2026-11-17)
+
+- Install a validated wheel from one standalone file, retaining distribution metadata and licence; preserve prior package links and metadata on failure.
+- Share the bootstrap template across root/project installers; support offline local or sibling built wheels and live Python version discovery.
+- Generate a two-line extension installer when Instamix is already installed.
+- Add multi-folder `pack`; enforce exact manifest namespace with case-insensitive suffixes, reject invalid/duplicate roots before touching output and preserve existing archives on staging failure.
+- Validate the GUI/project entry APIs before committing a bootstrapped wheel or reusing an installed copy; restore prior installation if required APIs are incomplete.
+- Verify 307 tests and actual wheel-from-sdist installation in a disposable data folder; native and Windows acceptance remain open.
+
+## Unreleased — shared Python environment (2026-11-17)
+
+- Resolve embedded Python version at runtime; accept explicit target facts for remote callers and reject unsupported architectures.
+- Verify standalone venv version, platform, architecture and prefix; preserve incompatible environments. Share canonical site-packages through an owned venv `.pth` and install through its verified interpreter.
+- Keep a local uv executable by copying an available binary; bound uv commands and interpreter probes.
+- Expose lazy `install_packages(*specs, data=None)` without changing extension `install`; refresh import caches after installation and reject option-like package requirements.
+- Resolve extension site-packages rules through the same live-version provider as Python packages; guard uv download destinations and temporary files against escaping links.
+- Read wheel RECORD as CSV, including quoted commas and newlines. Explicit-version package listing and removal use the same target as installation.
+- Offline arm64 CPython 3.11 wheel installation and both shared import routes pass in scratch directories. Native FontLab and Windows execution remain unverified.
+
+## 2026-11-17 — Remote CLI target routing
+
+Added optional lazy Remopy routing for env, package/extension install/list/remove
+and venv. Short host calls discover facts, verify an owned nonce and invalidate
+caches; providers run locally with explicit target facts. Extension manifest
+rules, package sources, requirements and standard folders share the host version.
+Existing local defaults remain compatible. Conflicting data overrides, foreign OS,
+malformed facts and remote hooks refuse; timeout is not retried, and refresh
+failure reports the already completed operation separately.
+
+Baseline 270 passed. Full coverage run: 295 passed in 7.37s; complete changed
+modules CLI 89%, dest 100%, env 91%, extension 93%, remote 97%. Focused remote
+transport/nonce/target/timeout cases use fake Remopy and scratch files, including
+an external provider delayed beyond five seconds. Native/Windows, remote hooks
+and released installation remain unverified. Task evidence:
+.superpowers/sdd/PLAN/task-7-report.md. No native calls, install, commit or push.
+
+## Unreleased
+
+- Stage checkout metadata and uninstall launchers before changing the install. Restore installed copy bytes, links, tracked directory permissions, Library and ledger bytes/permissions after placement or ledger-write failure, including generated records without source paths. Preserve modified launchers and unrelated metadata; retain the explicit requires_failed partial-install contract. Fifteen focused offline regressions pass, including custom file/directory permissions; the preceding complete 268-test arm64 Python 3.11 suite passed.
+- Cache the download test fixture's archive bytes so payload and checksum cannot differ across a gzip timestamp boundary.
+
+- Refuse escaped destination directory links and linked Library staging or ledger files before changing installs. Preserve symlinked data roots, internal directory links and editable package links. Reject absolute/traversing source declarations while retaining bootstrap source links; offline rollback checks cover ordinary deployed files.
+
+- Validate wrapper metadata before creating or copying output. Require extension folder basenames to match manifest IDs and validate install plans before creating data folders or replacing installs. Mixed-case extension suffixes and bootstrap checkout installs remain supported; 26 new offline regressions pass.
+
+- Public `install(path)`, `installed()` and `uninstall(id)` resolve omitted data folders through the existing environment helper. Explicit positional data folders still take precedence. Four offline API regressions pass, including folder, manifest and archive entry points.
+
+- Accept a root `manifest.fontlabextj` path when installing an extension, including case-insensitive filenames. Reuse the containing folder identity and existing deployment flow; reject unrelated files and manifests outside extension folders. Offline tests cover direct API and CLI use.
+
 ## 1.0.3 (2026-11-16)
 
 - Legacy migration moves files the legacy log recorded (`hashes`, `kept`) at new install targets to `Extensions/.instamix/backup/<id>/<UTC>/` instead of refusing, restores them if the install fails, and still applies after an earlier `migrated_to` uninstall. Unrecorded collisions still refuse. Reruns never move instamix's own files, backup folders are never overwritten, and a rollback restore is logged as `restored`.

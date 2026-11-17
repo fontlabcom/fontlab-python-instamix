@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .bootstrap import install_project
     from .env import data_dir
     from .extension import install, installed, uninstall
+    from .packages import install_packages
 
 try:
     from .__version__ import __version__
@@ -24,11 +25,20 @@ _LAZY = {
     "install": ("extension", "install"),
     "uninstall": ("extension", "uninstall"),
     "installed": ("extension", "installed"),
+    "install_packages": ("packages", "install_packages"),
     "install_project": ("bootstrap", "install_project"),
     "data_dir": ("env", "data_dir"),
 }
 
-__all__ = ["__version__", "data_dir", "install", "install_project", "installed", "uninstall"]
+__all__ = [
+    "__version__",
+    "data_dir",
+    "install",
+    "install_packages",
+    "install_project",
+    "installed",
+    "uninstall",
+]
 
 
 def __getattr__(name: str):

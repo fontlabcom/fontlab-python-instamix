@@ -1,13 +1,15 @@
 # this_file: tests/test_packages.py
 import hashlib
 import io
+import json
 import subprocess
 import sys
 import tarfile
+from pathlib import Path
 
 import pytest
 
-from fontlab_instamix import packages, uv, venv
+from fontlab_instamix import env, packages, uv, venv
 
 
 class Recorder:
@@ -17,20 +19,41 @@ class Recorder:
 
     def __call__(self, argv, **kwargs):
         self.calls.append(argv)
+        if "venv" in argv and not self.returncode:
+            (Path(argv[-1]) / "lib/site-packages").mkdir(parents=True)
+        if "-c" in argv:
+            folder = Path(argv[0]).parent.parent
+            facts = {
+                "version": "3.11",
+                "platform": sys.platform,
+                "arch": env.machine(),
+                "prefix": str(folder),
+                "purelib": str(folder / "lib/site-packages"),
+                "implementation": "CPython",
+            }
+            return subprocess.CompletedProcess(
+                argv, self.returncode, json.dumps(facts), "boom"
+            )
         return subprocess.CompletedProcess(argv, self.returncode, "ok", "boom")
 
 
 def test_install_when_specs_then_uv_targets_site_packages(data, tmp_path):
     fake_uv = tmp_path / "uv"
     run = Recorder()
-    packages.install(data, ["fonttools>=4", "git+https://github.com/x/y"], uv_bin=fake_uv, runner=run)
-    [argv] = run.calls
+    packages.install(
+        data, ["fonttools>=4", "git+https://github.com/x/y"], uv_bin=fake_uv, runner=run
+    )
+    argv = run.calls[-1]
     assert argv[0] == str(fake_uv)
     assert sys.executable not in argv
     assert argv[1:3] == ["pip", "install"]
-    assert argv[argv.index("--target") + 1] == str(data / "python" / "3.11" / "site-packages")
+    assert argv[argv.index("--target") + 1] == str(
+        data / "python" / "3.11" / "site-packages"
+    )
     assert argv[argv.index("--python-version") + 1] == "3.11"
-    assert argv[argv.index("--python-platform") + 1].endswith(("apple-darwin", "windows-msvc", "linux-gnu"))
+    assert argv[argv.index("--python-platform") + 1].endswith(
+        ("apple-darwin", "windows-msvc", "linux-gnu")
+    )
     assert argv[-2:] == ["fonttools>=4", "git+https://github.com/x/y"]
 
 
@@ -42,9 +65,9 @@ def test_install_when_uv_fails_then_error(data, tmp_path):
 def test_venv_create_when_called_then_uv_venv(data, tmp_path):
     run = Recorder()
     venv.create(data, tmp_path / "uv", runner=run)
-    [argv] = run.calls
+    argv = run.calls[0]
     assert argv[0] == str(tmp_path / "uv") and argv[1] == "venv"
-    assert "3.11" in argv and str(data / ".venv") in argv
+    assert any("cpython-3.11-" in a for a in argv) and str(data / ".venv") in argv
     assert sys.executable not in argv
 
 
@@ -55,7 +78,9 @@ def test_listed_and_uninstall_when_dist_info_then_removed(data):
     info = site / "demo-1.2.dist-info"
     info.mkdir()
     (info / "METADATA").write_text("Name: demo\nVersion: 1.2\n")
-    (info / "RECORD").write_text("demo/__init__.py,,\ndemo-1.2.dist-info/METADATA,,\ndemo-1.2.dist-info/RECORD,,\n")
+    (info / "RECORD").write_text(
+        "demo/__init__.py,,\ndemo-1.2.dist-info/METADATA,,\ndemo-1.2.dist-info/RECORD,,\n"
+    )
     assert ("demo", "1.2") in packages.listed(data)
     packages.uninstall(data, "Demo")
     assert not (site / "demo").exists() and not info.exists()
@@ -113,7 +138,9 @@ def test_uninstall_when_other_dirs_and_linked_checkout_then_untouched(data, tmp_
     assert (checkout / "empty").is_dir() and (checkout / "x.py").read_text() == "mine"
 
 
-def test_uninstall_when_record_entry_is_symlink_then_link_removed_not_target(data, tmp_path):
+def test_uninstall_when_record_entry_is_symlink_then_link_removed_not_target(
+    data, tmp_path
+):
     site = data / "python" / "3.11" / "site-packages"
     site.mkdir(parents=True)
     real = tmp_path / "real.py"

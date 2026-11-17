@@ -6,4 +6,5 @@ set -euo pipefail
 cd "$(dirname "$0")"
 rm -rf dist
 uv build --out-dir dist
+cp install.vfpy dist/install.vfpy
 ls -l dist
