@@ -5,6 +5,8 @@ this_file: CHANGELOG.md
 
 ## Unreleased
 
+- Install and uninstall reports no longer open modal dialogs. `gui.message` now only prints, so inside FontLab the report goes to the Output panel. The uninstall Yes/No confirmation is unchanged.
+
 - Documentation website at https://code.fontlab.com/fontlab-python-instamix/: a
   developer guide to developing, packaging, deploying and delivering FontLab 9
   scripts, Python packages and plugins with instamix, plus a command, manifest,

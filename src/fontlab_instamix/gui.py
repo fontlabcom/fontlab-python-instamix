@@ -3,7 +3,7 @@
 
 PythonQt is imported only when a function is called, never at module import,
 so this module is importable outside FontLab. Without PythonQt every helper
-falls back to the console.
+falls back to the console. ``message`` always prints and never opens a dialog.
 """
 
 from __future__ import annotations
@@ -18,14 +18,13 @@ def _qtgui():
 
 
 def message(text: str, title: str = "Instamix", *, error: bool = False) -> None:
-    QtGui = _qtgui()
-    if QtGui is None:
-        print(f"{title}: {text}")
-        return
-    if error:
-        QtGui.QMessageBox.critical(None, title, text)
-    else:
-        QtGui.QMessageBox.information(None, title, text)
+    """Print a status line; inside FontLab stdout goes to the Output panel.
+
+    Never opens a modal dialog: install and uninstall reports must not
+    interrupt the user's work.
+    """
+    prefix = f"{title} error" if error else title
+    print(f"{prefix}: {text}", flush=True)
 
 
 def confirm(text: str, title: str = "Instamix") -> bool:

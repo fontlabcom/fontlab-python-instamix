@@ -160,3 +160,17 @@ def test_sibling_when_tables_malformed_then_skipped(tmp_path):
     (badid / "pyproject.toml").write_text('[project]\nname = "badid"\n[tool.fontlab-install]\nid = "nodots"\n')
     assert bootstrap._sibling(tmp_path, "bad") is None
     assert bootstrap._sibling(tmp_path, "badid") is None
+
+
+def test_message_when_pythonqt_present_then_prints_without_dialog(capsys, monkeypatch):
+    from fontlab_instamix import gui
+
+    def boom():
+        raise AssertionError("message must not touch Qt dialogs")
+
+    monkeypatch.setattr(gui, "_qtgui", boom)
+    gui.message("Installed x 1.0", "Instamix")
+    gui.message("bad", "Uninstall", error=True)
+    out = capsys.readouterr().out
+    assert "Instamix: Installed x 1.0" in out
+    assert "Uninstall error: bad" in out
