@@ -206,3 +206,131 @@ def test_request_when_inside_fontlab_then_reads_host(monkeypatch):
     monkeypatch.setattr(platform, "python_version", lambda: "3.11.9")
     target = env.Target("3.11", "win32", "x86_64")
     assert venv.request(target) == "cpython-3.11.9-windows-x86_64-none"
+
+
+LINKED_HOME = "C:\\Users\\me\\AppData\\Roaming\\uv\\python\\cpython-3.11-windows-x86_64-none"
+REAL_HOME = "C:\\FontLab\\python\\uv\\python\\cpython-3.11.9-windows-x86_64-none"
+
+
+def _existing_venv(data, home):
+    folder = venv.path(data)
+    (folder / "Lib" / "site-packages").mkdir(parents=True)
+    (folder / "Lib" / "site-packages" / "kept.py").write_text("mine")
+    (folder / "pyvenv.cfg").write_text(f"home = {home}\nversion_info = 3.11.9\n")
+    return folder
+
+
+@pytest.fixture
+def in_fontlab(monkeypatch):
+    """Inside FontLab on Python 3.11.9, where venv requests name the exact version."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "fontlab", object())
+    monkeypatch.setattr(venv.platform, "python_version", lambda: "3.11.9")
+
+
+def _probe_runner(folder, calls, platform="win32"):
+    import json
+    import subprocess
+
+    facts = {
+        "version": "3.11",
+        "platform": platform,
+        "arch": "x86_64",
+        "prefix": str(folder),
+        "purelib": str(folder / "Lib" / "site-packages"),
+        "implementation": "CPython",
+    }
+
+    def runner(command, **kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, json.dumps(facts), "")
+
+    return runner
+
+
+@pytest.mark.parametrize(
+    ("home", "linked"),
+    [
+        (LINKED_HOME, True),
+        (LINKED_HOME.upper(), True),
+        (REAL_HOME, False),
+        ("C:\\Python311", False),
+    ],
+)
+def test_on_minor_link_when_home_varies_then_only_minor_link_matches(
+    data, home, linked
+):
+    assert venv.on_minor_link(_existing_venv(data, home)) is linked
+
+
+def test_on_minor_link_when_no_config_then_false(data):
+    assert venv.on_minor_link(venv.path(data)) is False
+
+
+def test_create_when_windows_venv_on_minor_link_then_rebuilt_in_place(data, in_fontlab):
+    folder = _existing_venv(data, LINKED_HOME)
+    calls = []
+    target = env.Target("3.11", "win32", "x86_64")
+    venv.create(data, data / "uv.exe", _probe_runner(folder, calls), target=target)
+    assert calls[0][1:] == [
+        "venv",
+        "--allow-existing",
+        "--python",
+        "cpython-3.11.9-windows-x86_64-none",
+        str(folder),
+    ], "the interpreter must be re-pointed before the probe runs"
+    assert len(calls) == 2 and calls[1][1:3] == ["-I", "-B"]
+    assert (folder / "Lib" / "site-packages" / "kept.py").read_text() == "mine"
+
+
+@pytest.mark.parametrize(
+    ("home", "platform"), [(REAL_HOME, "win32"), (LINKED_HOME, "darwin")]
+)
+def test_create_when_venv_needs_no_repair_then_only_probed(
+    data, home, platform, in_fontlab
+):
+    folder = _existing_venv(data, home)
+    calls = []
+    venv.create(
+        data,
+        data / "uv",
+        _probe_runner(folder, calls, platform),
+        target=env.Target("3.11", platform, "x86_64"),
+    )
+    assert [c[1] for c in calls] == ["-I"]
+
+
+def test_create_when_repair_fails_then_error_and_files_kept(data, in_fontlab):
+    import subprocess
+
+    folder = _existing_venv(data, LINKED_HOME)
+
+    def failing(command, **kwargs):
+        return subprocess.CompletedProcess(command, 2, "", "no interpreter found")
+
+    with pytest.raises(uv.UvError, match="no interpreter found"):
+        venv.create(
+            data, data / "uv.exe", failing, target=env.Target("3.11", "win32", "x86_64")
+        )
+    assert (folder / "Lib" / "site-packages" / "kept.py").read_text() == "mine"
+
+
+def test_create_when_request_is_not_exact_then_linked_venv_not_rebuilt(data):
+    """Outside FontLab uv would pick the minor-version link again; do not loop."""
+    folder = _existing_venv(data, LINKED_HOME)
+    calls = []
+    venv.create(
+        data,
+        data / "uv.exe",
+        _probe_runner(folder, calls),
+        target=env.Target("3.11", "win32", "x86_64"),
+    )
+    assert [c[1] for c in calls] == ["-I"]
+
+
+def test_on_minor_link_when_config_has_byte_order_mark_then_still_found(data):
+    folder = _existing_venv(data, LINKED_HOME)
+    config = folder / "pyvenv.cfg"
+    config.write_bytes(b"\xef\xbb\xbf" + config.read_bytes())
+    assert venv.on_minor_link(folder) is True

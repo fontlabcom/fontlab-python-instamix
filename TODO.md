@@ -22,6 +22,5 @@ this_file: TODO.md
 - [ ] Verify generated lowercase plugin bundles through the paired compatible App loader; packaging and copied/linked ZIP installation pass offline.
 
 - [ ] Reconcile the Plugmix consumer with released managed-plugin refusal/bootstrap readiness, retain its separate PyPI publisher gate, and qualify native/Windows installation.
-- [ ] Detect a Windows venv whose `pyvenv.cfg` home sits on a uv minor-version junction and recreate it (Issue 259).
-- [ ] `stub_install.vfpy` `ensure()`: require a minimum instamix version (≥ 1.0.13) and upgrade from PyPI when older; today any importable instamix is accepted, so Windows users on 1.0.12 or earlier keep the uv (os error 448) and reinstall (`__pycache__`) failures until they run instamix's own installer (Issue 259).
-- [ ] Let instamix's own `install.vfpy` (`SELF_INSTALL`) install from the checkout it runs from instead of PyPI latest; today a checkout test silently installs the released version (Issue 259, F7).
+- [ ] Verify in FontLab 9 for Windows that an existing `.venv` on a uv minor-version junction is repaired in place and keeps its packages; offline tests pass (Issue 259).
+- [ ] Verify the 1.0.13 minimum and upgrade in the released stub in FontLab 9 for Windows and macOS; offline tests pass (Issue 259).

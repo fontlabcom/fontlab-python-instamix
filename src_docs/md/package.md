@@ -84,7 +84,7 @@ Users install a project by opening `install.vfpy` in FontLab. Write the stub wit
 fontlab-instamix stub .
 ```
 
-The stub is about 40 lines. It imports an installed instamix; if there is none, it uses a sibling `fontlab-python-instamix` checkout, or downloads the instamix wheel from PyPI and checks its SHA-256. Then it installs the project and shows a message with the id and version. Commit the stub; rerun `stub --force` to update it.
+The stub imports an installed instamix 1.0.13 or later. If there is none, or the installed one is older, it uses a sibling `fontlab-python-instamix` checkout, or downloads the instamix wheel from PyPI and checks its SHA-256. If that fails, the older copy is put back. Then it installs the project and shows a message with the id and version. Commit the stub; rerun `stub --force` to update it.
 
 ## Which to choose
 

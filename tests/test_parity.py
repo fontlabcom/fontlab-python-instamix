@@ -605,12 +605,12 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
         "fontlab_instamix/extension.py": "def preflight_plugin_migration(*args): pass\n",
         "fontlab_instamix/gui.py": "def message(text): pass\n",
         "fontlab_instamix/bootstrap.py": "def install_project(path): return []\ndef _legacy_rollback(*args): pass\n",
-        "fontlab_python_instamix-1.dist-info/METADATA": "Name: fontlab-python-instamix\nVersion: 1\n",
-        "fontlab_python_instamix-1.dist-info/RECORD": "",
-        "fontlab_python_instamix-1.dist-info/WHEEL": "",
-        "fontlab_python_instamix-1.dist-info/licenses/LICENSE": "owned fixture",
+        "fontlab_python_instamix-1.0.13.dist-info/METADATA": "Name: fontlab-python-instamix\nVersion: 1.0.13\n",
+        "fontlab_python_instamix-1.0.13.dist-info/RECORD": "",
+        "fontlab_python_instamix-1.0.13.dist-info/WHEEL": "",
+        "fontlab_python_instamix-1.0.13.dist-info/licenses/LICENSE": "owned fixture",
     })
-    wheel = sibling.parents[1] / "dist/fontlab_python_instamix-1-py3-none-any.whl"
+    wheel = sibling.parents[1] / "dist/fontlab_python_instamix-1.0.13-py3-none-any.whl"
     wheel.parent.mkdir()
     wheel.write_bytes(blob)
     import importlib as real_importlib
@@ -619,6 +619,8 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
 
     def fake_import(name):
         seen.append(name)
+        if name == "fontlab":
+            raise ImportError(name)  # the test runs outside FontLab
         if (old / "legacy.py").exists():
             from types import SimpleNamespace
             if name.endswith(".extension"):
@@ -639,6 +641,190 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
     assert (old / "__init__.py").read_text() == "NEW = True\n"
     assert str(_site(data)) in sys.path
     sys.path.remove(str(_site(data)))
+
+
+STUB_MODULES = {
+    "legacy.py": "",
+    "extension.py": "def preflight_plugin_migration(*args): pass\n",
+    "gui.py": "def message(text): pass\n",
+    "bootstrap.py": "def install_project(path): return []\ndef _legacy_rollback(*args): pass\n",
+}
+
+
+def _stub_package(folder, version):
+    """Write an instamix that has the stub's required API and states `version`."""
+    folder.mkdir(parents=True)
+    line = f"__version__ = {version!r}\n" if version is not None else ""
+    (folder / "__init__.py").write_text(line)
+    for name, body in STUB_MODULES.items():
+        (folder / name).write_text(body)
+    return folder
+
+
+def _import_from_site(monkeypatch, data):
+    """Make the stub import instamix from the test site folder, outside FontLab."""
+    import importlib as real_importlib
+    from types import SimpleNamespace
+
+    def fake_import(name):
+        parts = name.split(".")
+        if parts[0] != "fontlab_instamix":
+            raise ImportError(name)
+        file = _site(data) / "fontlab_instamix" / (
+            "__init__.py" if len(parts) == 1 else parts[1] + ".py"
+        )
+        if not file.is_file():
+            raise ImportError(name)
+        scope = {}
+        exec(compile(file.read_text(), str(file), "exec"), scope)  # noqa: S102
+        return SimpleNamespace(**scope)
+
+    monkeypatch.setattr(real_importlib, "import_module", fake_import)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    saved = {k: v for k, v in sys.modules.items() if k.startswith("fontlab_instamix")}
+    monkeypatch.setattr(sys, "modules", dict(sys.modules))
+    return saved
+
+
+def _replacing_download(ns, calls):
+    def download(target):
+        calls.append(target)
+        _stub_package(target / "fontlab_instamix", "1.0.13")
+
+    ns["download"] = download
+
+
+@pytest.mark.parametrize(
+    "version", ["1.0.13", "1.0.13.post1", "1.0.14.dev3", "2.0", "0.0.0+checkout"]
+)
+def test_stub_ensure_when_instamix_new_enough_then_kept(
+    version, tmp_path, monkeypatch, data
+):
+    ns = _stub_namespace(tmp_path, monkeypatch, data)
+    package = _stub_package(_site(data) / "fontlab_instamix", version)
+    _import_from_site(monkeypatch, data)
+    calls = []
+    _replacing_download(ns, calls)
+    ns["ensure"]()
+    assert calls == [], f"{version} must not be replaced"
+    assert version in (package / "__init__.py").read_text()
+
+
+@pytest.mark.parametrize(
+    "version", ["1.0.12", "1.0.9", "1.0", "0.9.99", "1.0.13.dev1", "1.0.13rc1", None]
+)
+def test_stub_ensure_when_instamix_too_old_then_upgraded(
+    version, tmp_path, monkeypatch, data
+):
+    ns = _stub_namespace(tmp_path, monkeypatch, data)
+    package = _stub_package(_site(data) / "fontlab_instamix", version)
+    _import_from_site(monkeypatch, data)
+    calls = []
+    _replacing_download(ns, calls)
+    ns["ensure"]()
+    assert len(calls) == 1, f"{version} must be replaced once"
+    assert "1.0.13" in (package / "__init__.py").read_text()
+    assert not list(_site(data).glob(".instamix-*")), "staging folder left behind"
+
+
+def test_stub_ensure_when_no_version_but_metadata_then_metadata_decides(
+    tmp_path, monkeypatch, data
+):
+    ns = _stub_namespace(tmp_path, monkeypatch, data)
+    _stub_package(_site(data) / "fontlab_instamix", None)
+    (_site(data) / "fontlab_python_instamix-1.0.13.dist-info").mkdir()
+    _import_from_site(monkeypatch, data)
+    calls = []
+    _replacing_download(ns, calls)
+    ns["ensure"]()
+    assert calls == [], "metadata 1.0.13 is new enough"
+
+
+def test_stub_ensure_when_old_instamix_is_linked_checkout_then_kept(
+    tmp_path, monkeypatch, data
+):
+    ns = _stub_namespace(tmp_path, monkeypatch, data)
+    source = _stub_package(tmp_path / "checkout" / "fontlab_instamix", "1.0.0")
+    _site(data).mkdir(parents=True)
+    (_site(data) / "fontlab_instamix").symlink_to(source, target_is_directory=True)
+    _import_from_site(monkeypatch, data)
+    calls = []
+    _replacing_download(ns, calls)
+    ns["ensure"]()
+    assert calls == [], "a linked checkout is the developer's choice"
+    assert (_site(data) / "fontlab_instamix").is_symlink()
+
+
+def test_stub_ensure_when_upgrade_download_fails_then_old_instamix_restored(
+    tmp_path, monkeypatch, data
+):
+    ns = _stub_namespace(tmp_path, monkeypatch, data)
+    package = _stub_package(_site(data) / "fontlab_instamix", "1.0.12")
+    _import_from_site(monkeypatch, data)
+
+    def download(target):
+        raise OSError("network is off")
+
+    ns["download"] = download
+    with pytest.raises(OSError, match="network is off"):
+        ns["ensure"]()
+    assert "1.0.12" in (package / "__init__.py").read_text()
+    assert not list(_site(data).glob(".instamix-*")), "staging folder left behind"
+
+
+def _self_installer(tmp_path, monkeypatch, data):
+    """Load instamix's own installer from a fake checkout that has `src`."""
+    repo = tmp_path / "fontlab-python-instamix"
+    source = _stub_package(repo / "src" / "fontlab_instamix", "0.0.0+checkout")
+    (source / "__pycache__").mkdir()
+    (source / "__pycache__" / "gui.cpython-311.pyc").write_bytes(b"cache")
+    monkeypatch.setenv("FONTLAB_DATA_DIR", str(data))
+    ns = {"__name__": "install_vfpy_import", "__file__": str(repo / "install.vfpy")}
+    code = (ROOT / "install.vfpy").read_text()
+    exec(compile(code, "install.vfpy", "exec"), ns)  # noqa: S102
+    assert ns["SELF_INSTALL"] is True
+    return ns, repo
+
+
+def test_self_installer_when_checkout_has_source_then_installs_it_over_old(
+    tmp_path, monkeypatch, data
+):
+    ns, _repo = _self_installer(tmp_path, monkeypatch, data)
+    package = _stub_package(_site(data) / "fontlab_instamix", "1.0.13")
+    (_site(data) / "fontlab_python_instamix-1.0.13.dist-info").mkdir()
+    _import_from_site(monkeypatch, data)
+    calls = []
+    _replacing_download(ns, calls)
+    ns["ensure"](force=True)
+    assert calls == [], "the checkout source must be used, not a download"
+    assert "0.0.0+checkout" in (package / "__init__.py").read_text()
+    assert not (package / "__pycache__").exists()
+    assert not list(_site(data).glob("fontlab_python_instamix-*.dist-info")), (
+        "old metadata must not describe the checkout copy"
+    )
+
+
+def test_self_installer_when_built_wheel_present_then_wheel_wins(
+    tmp_path, monkeypatch, data
+):
+    ns, repo = _self_installer(tmp_path, monkeypatch, data)
+    (repo / "dist").mkdir()
+    (repo / "dist" / "fontlab_python_instamix-1.0.13-py3-none-any.whl").write_bytes(b"")
+    _import_from_site(monkeypatch, data)
+    calls = []
+    _replacing_download(ns, calls)
+    ns["ensure"](force=True)
+    assert len(calls) == 1, "a built wheel beside the installer wins"
+
+
+def test_package_stub_when_beside_source_then_does_not_install_it(
+    tmp_path, monkeypatch, data
+):
+    ns = _stub_namespace(tmp_path, monkeypatch, data)
+    _stub_package(tmp_path / "repo" / "src" / "fontlab_instamix", "0.0.0+checkout")
+    assert ns["SELF_INSTALL"] is False
+    assert ns["checkout"](tmp_path / "stage") is False
+    assert not (tmp_path / "stage").exists()
 
 
 def test_project_version_when_git_checkout_then_describe_before_version_file(tmp_path):

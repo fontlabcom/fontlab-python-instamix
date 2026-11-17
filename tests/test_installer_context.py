@@ -23,6 +23,7 @@ def test_installer_entry_checks_context_before_ready_provider(tmp_path, monkeypa
         return []
 
     package = ModuleType("fontlab_instamix")
+    package.__version__ = "1.0.13"
     monkeypatch.setitem(sys.modules, "fontlab_instamix", package)
     for name, attrs in {
         "legacy": {},

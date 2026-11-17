@@ -20,6 +20,7 @@ PROBE = (
     "arch=platform.machine(),prefix=sys.prefix,purelib=sysconfig.get_path('purelib'),"
     "implementation=platform.python_implementation())))"
 )
+MINOR_LINK = re.compile(r"cpython-\d+\.\d+-windows-", re.IGNORECASE)
 
 
 def path(data: Path) -> Path:
@@ -54,6 +55,21 @@ def request(target: env.Target, *, host: str | None = None) -> str:
     )
     version = host if pinned else target.version
     return f"cpython-{version}-{os_name}-{arch}-{libc}"
+
+
+def on_minor_link(folder: Path) -> bool:
+    """Whether the environment's ``pyvenv.cfg`` home is a uv minor-version link.
+
+    uv names that link ``cpython-3.11-windows-...``; the real install beside it
+    is ``cpython-3.11.9-windows-...``. Environments made by instamix before
+    1.0.12 point at the link, which FontLab's child processes cannot open.
+    """
+    try:
+        text = (folder / "pyvenv.cfg").read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError):
+        return False
+    home = re.search(r"^home\s*=\s*(.+)$", text, re.MULTILINE)
+    return bool(home and MINOR_LINK.search(home.group(1)))
 
 
 def probe(folder: Path, target: env.Target, runner=subprocess.run) -> Path:
@@ -108,6 +124,19 @@ def create(
         uv.run(
             uv_bin,
             ["venv", "--python", request(target), str(folder)],
+            runner=runner,
+            data=data,
+        )
+    elif (
+        target.platform == "win32"
+        and on_minor_link(folder)
+        and not MINOR_LINK.search(request(target))
+    ):
+        # Point the interpreter at a real install; installed files stay.
+        # Only with an exact-version request: a minor one leads back to the link.
+        uv.run(
+            uv_bin,
+            ["venv", "--allow-existing", "--python", request(target), str(folder)],
             runner=runner,
             data=data,
         )

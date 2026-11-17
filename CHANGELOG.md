@@ -4,6 +4,30 @@ this_file: CHANGELOG.md
 
 # Changelog
 
+## 2026-11-17 — Stub minimum version, checkout install, venv repair (Issue 259 follow-ups)
+
+Tested offline only (472 tests); FontLab for Windows and macOS runs are still
+to do.
+
+- The `install.vfpy` stub now requires instamix 1.0.13 or later. An older
+  installed instamix is replaced from a local `dist` wheel, or else from
+  PyPI (SHA-256 checked), before the project installs; if that fails, the
+  old copy is put back and the error is shown. Before, any importable
+  instamix was accepted, so Windows users on 1.0.12 or earlier kept the uv
+  (os error 448) and reinstall failures. The stub reads the version from
+  `__version__`, or from the `.dist-info` folder name when the package
+  states none. A pre-release of 1.0.13 counts as older. A linked checkout
+  and a `+local` version are always accepted.
+- Instamix's own `install.vfpy` installs the checkout it runs from (a built
+  `dist/*.whl` first, else `src/fontlab_instamix`). Before, it installed the
+  latest PyPI release, so a checkout test silently tested the released code
+  (F7). Package stubs never copy a sibling source tree.
+- On Windows, an existing `.venv` whose `pyvenv.cfg` home is on a uv
+  minor-version junction (`cpython-3.11-windows-…`) is rebuilt in place with
+  `uv venv --allow-existing` and the exact patch version. Installed packages
+  stay. This runs only inside FontLab, where the exact version is known.
+  Other platforms and healthy environments are only probed, as before.
+
 ## 2026-11-17 — Reinstall after import in copy mode (Issue 259 F10)
 
 - Rerunning an installer failed with "refusing to overwrite existing
@@ -39,7 +63,8 @@ Native evidence: uv downloaded (0.13.9), venv created, `humanize` and
 `WORK/issue259/results/`. macOS native behaviour was not retested.
 
 Known limits: a Windows venv created before this change keeps its
-`pyvenv.cfg` home on the old junction and must be removed by hand; the first
+`pyvenv.cfg` home on the old junction (repaired automatically since the
+Issue 259 follow-ups above); the first
 Windows run downloads CPython (about 24 MiB) into the data folder, so it
 needs network access.
 
