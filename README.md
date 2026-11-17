@@ -36,6 +36,11 @@ wheel there. Source-only sibling copies now require `uv build` first. This avoid
 inventing release metadata or dropping its licence. Download, validation or
 replacement failures restore the previous package and metadata, including links.
 
+Standalone `.vfpy` entry points require FontLab or an explicit
+`FONTLAB_DATA_DIR`, including when Instamix is already installed. Importing with
+the `install_vfpy_import` sentinel has no installation side effects. CLI and
+direct API data-folder defaults remain as described above.
+
 The installer uses the running FontLab Python version (3.11 outside the host).
 For editable checkouts use `fontlab-instamix bootstrap DIR` with Instamix already
 installed; the standalone installer consistently installs wheel bytes.

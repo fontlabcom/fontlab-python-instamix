@@ -4,8 +4,9 @@ this_file: TODO.md
 
 # Remaining Issue 256 work
 
-- [ ] Integrate the reviewed public installer asset and verify its live HTTP bytes; then qualify the API/book download links through their normal gates.
+- [ ] Independently review, integrate and publish the installer entry-context guard; qualify regenerated consumer templates without lifting the existing execution or owner-recovery holds.
 
+- [ ] Integrate the reviewed public installer asset and verify its live HTTP bytes; then qualify the API/book download links through their normal gates.
 
 - [ ] Independently review, integrate and publish the failed legacy-upgrade preservation fix; requalify whole-tree migration using the released provider and update consumer stubs before rollout.
 

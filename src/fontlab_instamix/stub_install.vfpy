@@ -161,6 +161,8 @@ def ensure(force=False):
 
 
 if __name__ != "install_vfpy_import":
+    # Validate context even when reusing an already installed provider.
+    site()
     ensure(force=SELF_INSTALL)
     from fontlab_instamix import gui
     if SELF_INSTALL:

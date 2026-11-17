@@ -4,6 +4,23 @@ this_file: WORK.md
 
 # Issue 256 implementation review
 
+## 2026-11-17 — Installer entry context
+
+All three standalone installer copies check the existing read-only site context
+before bootstrapping, including when a ready provider is reused. External entry
+execution without FontLab or FONTLAB_DATA_DIR now refuses before deployment.
+The import sentinel remains side-effect free; explicit data-folder and host
+preference contexts retain their behavior. CLI and direct API defaults are unchanged.
+
+Twelve fake-provider cases cover all copies, including blocked deployment before
+removing the test data override. The three missing-context cases fail before the
+fix. All 411 arm64 Python 3.11 tests pass in 7.70 seconds; compile, template
+parity and scoped lint checks pass. No real provider, installer deployment or
+native host is executed by these
+new regressions. Independent review, integration and release remain separate.
+Consumer execution and owner-folder recovery remain held pending their existing
+incident review; this source guard does not repair or prove prior folder state.
+
 ## 2026-11-17 — Public standalone installer download
 
 The existing strict docs build now publishes the exact root install.vfpy as a
@@ -18,7 +35,6 @@ The new missing-asset regression failed first, then 36 docs tests passed in
 seconds with an explicit owned scratch data root. Runtime modules and installer
 bytes are unchanged. This qualifies the local build, not the live URL;
 independent review, delivery and exact HTTP-byte verification remain open.
-
 
 ## 2026-11-17 — Failed legacy upgrade preservation
 
