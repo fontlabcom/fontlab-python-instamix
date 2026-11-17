@@ -66,7 +66,7 @@ fontlab-instamix pkg list
 
 Instamix fetches its own `uv` into `<data>/python/uv` when none is on `PATH` (`fontlab-instamix uv fetch`) and installs into `<data>/python/3.11/site-packages` for Python 3.11 on your platform. Environment markers in dependency strings are evaluated for Python 3.11 and the host system, not for the Python that runs instamix.
 
-For an editor or a type checker, `fontlab-instamix venv` creates `<data>/.venv` for Python 3.11.
+For an editor or a type checker, `fontlab-instamix venv` creates or verifies `<data>/.venv` for Python 3.11. New environments use a managed `.pth` to read the canonical package directory. An existing compatible environment with site-packages linked directly to that exact directory is reused without changing its files. Other escaping paths, mismatched runtimes and unrelated managed-path files are refused.
 
 ## Test without FontLab
 

@@ -83,3 +83,54 @@ def test_offline_wheel_imported_by_venv_and_canonical_path(data, tmp_path, monke
     packages.uninstall(data, "instamix-probe", target=target)
     assert not (site / "instamix_probe.py").exists()
     assert keep.is_file()
+
+
+def test_existing_canonical_site_symlink_reused_without_writes(data):
+    import shutil
+
+    from test_shared_environment_review import snapshot
+
+    target = env.Target("3.11", env.sys.platform, env.machine())
+    binary = uv.find(data)
+    assert binary is not None, "the offline fixture requires installed uv"
+    folder = venv.path(data)
+    subprocess.run(
+        [
+            str(binary),
+            "--offline",
+            "venv",
+            "--python",
+            venv.request(target),
+            str(folder),
+        ],
+        check=True,
+        capture_output=True,
+        timeout=30,
+    )
+    purelib = venv.probe(folder, target)
+    site = env.site_packages(data, version=target.version)
+    site.parent.mkdir(parents=True)
+    shutil.move(str(purelib), site)
+    purelib.symlink_to(site, target_is_directory=True)
+    (site / "readonly_probe.py").write_text("VALUE = 256\n")
+    # Startup imports prove -B also prevents cache writes from existing .pth files.
+    (site / "existing.pth").write_text("import readonly_probe\n")
+    before = snapshot(data)
+    assert venv.create(data, binary, target=target) == folder
+    imported = subprocess.run(
+        [
+            str(venv.python(folder)),
+            "-I",
+            "-B",
+            "-c",
+            "import readonly_probe as p; print(p.VALUE)",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert imported.stdout.strip() == "256"
+    assert snapshot(data) == before
+    assert purelib.is_symlink() and purelib.resolve() == site.resolve()
+    assert not (site / venv.PTH).exists()

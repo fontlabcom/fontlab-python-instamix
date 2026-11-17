@@ -82,8 +82,9 @@ FontLab 9's Python 3.11 and the current OS/architecture; they do not discover a
 remote FontLab yet. A qualified uv Python request prevents accidental Intel
 selection on Apple Silicon. uv is kept in `<data>/python/uv/`.
 
-The venv reads `<data>/python/<version>/site-packages` through its own managed
-`.pth` file. Packages install directly into that canonical directory, which
+New venvs read `<data>/python/<version>/site-packages` through a managed
+`.pth` file. An existing compatible venv whose site-packages resolves to that
+exact canonical directory is reused without adding or changing files. Packages install directly into that canonical directory, which
 FontLab already adds to its import path. FontLab need not process `.pth` files.
 An incompatible existing venv or unrelated `.pth` file is refused without
 replacement: inspect it and move it aside explicitly before retrying.

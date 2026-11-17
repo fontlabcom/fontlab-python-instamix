@@ -710,7 +710,7 @@
 fontlab-instamix<span class="w"> </span>pkg<span class="w"> </span>list
 </code></pre></div>
 <p>Instamix fetches its own <code>uv</code> into <code>&lt;data&gt;/python/uv</code> when none is on <code>PATH</code> (<code>fontlab-instamix uv fetch</code>) and installs into <code>&lt;data&gt;/python/3.11/site-packages</code> for Python 3.11 on your platform. Environment markers in dependency strings are evaluated for Python 3.11 and the host system, not for the Python that runs instamix.</p>
-<p>For an editor or a type checker, <code>fontlab-instamix venv</code> creates <code>&lt;data&gt;/.venv</code> for Python 3.11.</p>
+<p>For an editor or a type checker, <code>fontlab-instamix venv</code> creates or verifies <code>&lt;data&gt;/.venv</code> for Python 3.11. New environments use a managed <code>.pth</code> to read the canonical package directory. An existing compatible environment with site-packages linked directly to that exact directory is reused without changing its files. Other escaping paths, mismatched runtimes and unrelated managed-path files are refused.</p>
 <h2 id="test-without-fontlab">Test without FontLab</h2>
 <p>Point every command at a scratch folder to see exactly which files an install places:</p>
 <div class="highlight"><pre><span></span><code>uvx<span class="w"> </span>fontlab-python-instamix<span class="w"> </span>--data-dir<span class="w"> </span>/tmp/fl<span class="w"> </span>bootstrap<span class="w"> </span>.

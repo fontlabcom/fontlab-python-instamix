@@ -85,3 +85,114 @@ def test_manifest_package_routes_use_live_host_version(data, example, monkeypatc
 def test_destination_fallback_remains_fontlab9(monkeypatch):
     monkeypatch.delitem(sys.modules, 'fontlab', raising=False)
     assert dest.resolve('site-packages/.', 'demo') == 'python/3.11/site-packages'
+
+
+@pytest.fixture
+def shared_runtime(data):
+    import subprocess
+
+    from fontlab_instamix import venv
+
+    site = env.site_packages(data)
+    site.mkdir(parents=True)
+    purelib = venv.path(data) / "lib/python3.11/site-packages"
+    purelib.parent.mkdir(parents=True)
+    purelib.symlink_to(site, target_is_directory=True)
+    facts = {
+        "version": "3.11",
+        "platform": "darwin",
+        "arch": "arm64",
+        "prefix": str(venv.path(data)),
+        "purelib": str(purelib),
+        "implementation": "CPython",
+    }
+
+    def runner(argv, **kwargs):
+        assert argv[1:4] == ["-I", "-B", "-c"]
+        assert kwargs["timeout"] == 30
+        return subprocess.CompletedProcess(argv, 0, json.dumps(facts), "")
+
+    return site, purelib, facts, runner
+
+
+@pytest.mark.parametrize("pth", [None, "managed", "foreign", "link"])
+def test_canonical_shared_venv_reused_without_writes(data, shared_runtime, pth):
+    from fontlab_instamix import venv
+
+    site, purelib, _facts, runner = shared_runtime
+    marker = site / "keep.py"
+    marker.write_text("VALUE = 256\n")
+    pathfile = site / venv.PTH
+    if pth == "managed":
+        pathfile.write_text(f"# Managed by fontlab_instamix\n{site.resolve()}\n")
+    elif pth == "foreign":
+        pathfile.write_text("unrelated\n")
+    elif pth == "link":
+        pathfile.symlink_to(marker)
+    before = snapshot(data)
+    target = env.Target("3.11", "darwin", "arm64")
+    if pth in ("foreign", "link"):
+        with pytest.raises(uv.UvError, match="Unrelated"):
+            venv.create(data, data / "uv", runner=runner, target=target)
+    else:
+        assert venv.probe(venv.path(data), target, runner) == purelib
+        assert venv.create(
+            data, data / "uv", runner=runner, target=target
+        ) == venv.path(data)
+    assert snapshot(data) == before
+
+
+@pytest.mark.parametrize(
+    "mismatch",
+    [
+        "version",
+        "platform",
+        "arch",
+        "prefix",
+        "implementation",
+        "other-site",
+        "other-version",
+        "outside-data",
+        "canonical-escape",
+    ],
+)
+def test_shared_venv_mismatch_refused_without_writes(
+    data, tmp_path, shared_runtime, mismatch
+):
+    from fontlab_instamix import venv
+
+    site, purelib, facts, runner = shared_runtime
+    overrides = {
+        "version": "3.12",
+        "platform": "linux",
+        "arch": "x86_64",
+        "prefix": str(data),
+        "implementation": "PyPy",
+    }
+    if mismatch in overrides:
+        facts[mismatch] = overrides[mismatch]
+    else:
+        other = {
+            "other-site": data / "other/site-packages",
+            "other-version": env.site_packages(data, version="3.12"),
+            "outside-data": tmp_path / "outside/site-packages",
+            "canonical-escape": tmp_path / "outside/site-packages",
+        }[mismatch]
+        other.mkdir(parents=True)
+        if mismatch == "canonical-escape":
+            site.rmdir()
+            site.symlink_to(other, target_is_directory=True)
+        else:
+            purelib.unlink()
+            purelib.symlink_to(other, target_is_directory=True)
+    before = snapshot(tmp_path)
+    with pytest.raises(uv.UvError):
+        venv.probe(venv.path(data), env.Target("3.11", "darwin", "arm64"), runner)
+    with pytest.raises((ValueError, uv.UvError)):
+        venv.create(
+            data,
+            data / "uv",
+            runner=runner,
+            target=env.Target("3.11", "darwin", "arm64"),
+        )
+    assert snapshot(tmp_path) == before

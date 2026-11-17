@@ -47,7 +47,7 @@ def probe(folder: Path, target: env.Target, runner=subprocess.run) -> Path:
         ):
             raise ValueError("refusing to execute the FontLab host executable")
         result = runner(
-            [str(python(folder, target.platform)), "-I", "-c", PROBE],
+            [str(python(folder, target.platform)), "-I", "-B", "-c", PROBE],
             capture_output=True,
             text=True,
             timeout=30,
@@ -62,7 +62,11 @@ def probe(folder: Path, target: env.Target, runner=subprocess.run) -> Path:
         purelib = Path(facts["purelib"])
         if not matches or not purelib.is_dir():
             raise ValueError("runtime facts do not match")
-        env.require_inside(folder, purelib / PTH)
+        site = env.site_packages(folder.parent, version=target.version).resolve()
+        if purelib.resolve() == site:
+            env.require_inside(folder.parent, site / PTH)
+        else:
+            env.require_inside(folder, purelib / PTH)
         return purelib
     except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
         raise uv.UvError(
@@ -92,6 +96,8 @@ def create(
         pth.exists() and pth.read_text(encoding="utf-8") != content
     ):
         raise uv.UvError(f"Unrelated shared-package path file exists: {pth}")
+    if purelib.resolve() == site:
+        return folder
     site.mkdir(parents=True, exist_ok=True)
     if not pth.exists():
         pth.write_text(content, encoding="utf-8")

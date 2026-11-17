@@ -4,6 +4,38 @@ this_file: WORK.md
 
 # Issue 256 implementation review
 
+## 2026-11-17 — Remopy release qualification
+
+Remopy 2.0.7 includes the Wine/CrossOver providers and CLI routing in its
+reviewed GitHub release. Runtime execution, remote hooks and native Windows
+bootstrap remain unverified. Remopy PyPI publication failed with
+invalid-publisher; publisher administration and any admitted retry remain open.
+No owner-recovery or consumer-execution hold is lifted.
+
+## 2026-11-17 — Existing shared-package venvs
+
+A compatible environment whose site-packages resolves exactly to the canonical
+package directory can now be reused without creating a redundant managed path
+file or directories. Runtime version, implementation, platform, architecture and
+prefix checks remain mandatory. Other escaping paths and unrelated managed path
+files are still refused. The read-only runtime probe disables bytecode writes.
+
+Four canonical-layout regressions failed first; nine mismatch/preservation cases
+already passed. All 425 arm64 Python 3.11 tests pass in 8.70 seconds, with 96.49%
+statement coverage for the complete venv module. The controller subsequently
+qualified 21 focused tests in 4.37 seconds with 94.52% combined statement/branch
+coverage for the whole module (55/57 statements and 14/16 branches). An actual offline uv-created environment,
+then linked to its canonical site-packages, preserves its files, links and path
+files while probing and importing. Scoped lint and wheel/sdist builds pass. The locked strict docs build and
+all 36 docs tests pass (10.603 seconds), preserving the exact installer asset.
+This is source qualification on owned scratch data. Owner-folder recovery and
+consumer execution remain held; no existing installation is converted or repaired.
+Independent source review passed. Controller reindexing now includes probe,
+create and the new tests: 16 changed symbols across 11 files, one affected
+cmd_pkg_install flow, MEDIUM risk. This supersedes the earlier omitted-symbol
+summary; index extraction caps and the initial metadata-census limit remain.
+Task 20 integration, exact-SHA CI/release and native/Windows checks remain open.
+
 ## 2026-11-17 — Installer entry context
 
 All three standalone installer copies check the existing read-only site context
@@ -17,7 +49,9 @@ removing the test data override. The three missing-context cases fail before the
 fix. All 411 arm64 Python 3.11 tests pass in 7.70 seconds; compile, template
 parity and scoped lint checks pass. No real provider, installer deployment or
 native host is executed by these
-new regressions. Independent review, integration and release remain separate.
+new regressions. Independent release review qualifies the guard in published
+1.0.10 at 5b875f0dc41ab404cfda92b127186f1896f540b3, with successful exact-SHA
+release/docs/Pages runs and matching GitHub/PyPI artifacts.
 Consumer execution and owner-folder recovery remain held pending their existing
 incident review; this source guard does not repair or prove prior folder state.
 
@@ -33,8 +67,10 @@ hash comparison.
 The new missing-asset regression failed first, then 36 docs tests passed in
 5.064 seconds. Full arm64 Python 3.11 source checks passed 399 tests in 11.51
 seconds with an explicit owned scratch data root. Runtime modules and installer
-bytes are unchanged. This qualifies the local build, not the live URL;
-independent review, delivery and exact HTTP-byte verification remain open.
+bytes were unchanged in that increment. Independent 1.0.10 review now qualifies
+the delivered download: HTTP 200, 7143 bytes, matching the released canonical
+installer SHA256 5e7b64584ddfef9e276add3d465343c641b91c29840db34967735d4d00ab643e.
+API/book guide delivery retains its own gates.
 
 ## 2026-11-17 — Failed legacy upgrade preservation
 
@@ -58,8 +94,10 @@ bootstrap.py has 91% combined coverage. Six real historical-installer scenarios
 pass against an ordinary candidate-wheel prefix with whole-tree failure
 oracles, preserving 234 Examples or 224 Scriptmix entries on refusal. Actual
 published 1.0.8 rejection, failed-fetch preservation and candidate-wheel
-replacement pass. This is reviewed-source preparation, not release or native
-qualification; controller integration and independent review remain required.
+replacement pass. Independent release review qualifies published 1.0.9 at
+c676c7cad2f87556edacd98c6da6b000f9dfbfe0, its GitHub/PyPI artifact identity and
+all six released-wheel legacy-preservation fixtures. Updated consumer-stub
+readiness/delivery, native and Windows qualification remain separate.
 
 
 ## 2026-11-17 — Manifest entry point

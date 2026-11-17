@@ -4,19 +4,21 @@ this_file: TODO.md
 
 # Remaining Issue 256 work
 
-- [ ] Independently review, integrate and publish the installer entry-context guard; qualify regenerated consumer templates without lifting the existing execution or owner-recovery holds.
+- [ ] Integrate and release the independently reviewed exact-canonical shared site-packages reuse; keep owner recovery and consumer execution held, and qualify native/Windows behavior separately.
 
-- [ ] Integrate the reviewed public installer asset and verify its live HTTP bytes; then qualify the API/book download links through their normal gates.
+- [ ] Qualify regenerated consumer templates against the released 1.0.10 entry-context guard without lifting the existing execution or owner-recovery holds.
 
-- [ ] Independently review, integrate and publish the failed legacy-upgrade preservation fix; requalify whole-tree migration using the released provider and update consumer stubs before rollout.
+- [ ] Qualify API/book download-link delivery through its normal gates; released 1.0.10 installer HTTP bytes are independently verified.
+
+- [ ] Qualify updated consumer stubs before rollout; independent 1.0.9 release review and all six released-wheel whole-tree legacy-preservation fixtures pass.
 
 - [ ] Verify the implemented remote CLI against live FontLab: nonce, owned package, standalone and embedded imports; qualify Windows runtime separately.
-- [ ] Implement CrossOver/Wine execution and remote hook submission; ordinary same-OS remote CLI is implemented with offline regression evidence.
+- [ ] Qualify the Wine/CrossOver providers and CLI routing released on GitHub in Remopy 2.0.7; verify runtime execution and remote hook submission. Resolve the separate Remopy PyPI publisher failure before claiming PyPI delivery.
 - [ ] Qualify native PythonQt multi-file and folder selection in the serialized FontLab lane; static declarations and offline return-value tests pass.
 - [ ] Reconcile consumer installers and environment helpers, then verify macOS/native and Windows/CrossOver workflows.
 - [ ] Independently review and integrate verified changes through repository gates; retain unverified native/release outcomes.
 
-- [ ] Independently review generated-file rollback and qualify it on native/Windows installations; offline failure recovery passes.
+- [ ] Qualify generated-file rollback on native/Windows installations; independent 1.0.9 review and released-wheel offline failure recovery pass.
 - [ ] Verify generated lowercase plugin bundles through the paired compatible App loader; packaging and copied/linked ZIP installation pass offline.
 
-- [ ] Independently review Task 11 managed plugin refusal/bootstrap readiness, reconcile the Plugmix consumer, and qualify release/native/Windows installation separately.
+- [ ] Reconcile the Plugmix consumer with released managed-plugin refusal/bootstrap readiness, retain its separate PyPI publisher gate, and qualify native/Windows installation.
