@@ -81,15 +81,32 @@ def system_curl() -> Path | None:
     return curl if curl.is_file() else None
 
 
+MAC_CURL = Path("/usr/bin/curl")
+HTTPS_ONLY = ("--proto", "=https", "--proto-redir", "=https")
+CERT_VARIABLES = ("SSL_CERT_FILE", "SSL_CERT_DIR", "CURL_CA_BUNDLE")
+
+
+def platform_curl(plat: str = sys.platform) -> Path | None:
+    """The operating system's own curl, which verifies TLS with the system store."""
+    if plat == "win32":
+        return system_curl()
+    if plat == "darwin" and MAC_CURL.is_file():
+        return MAC_CURL
+    return None
+
+
 def curl_bytes(url: str, curl: Path, runner=subprocess.run) -> bytes:
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    # Without these, curl would be pointed back at the store that just failed.
+    clean = {k: v for k, v in os.environ.items() if k not in CERT_VARIABLES}
     try:
         result = runner(
-            [str(curl), "-fsSL", "--max-time", "300", url],
+            [str(curl), "-fsSL", *HTTPS_ONLY, "--max-time", "300", "--", url],
             capture_output=True,
             stdin=subprocess.DEVNULL,
             creationflags=flags,
             timeout=330,
+            env=clean,
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         raise UvError(f"curl could not download {url}: {error}") from error
@@ -109,15 +126,16 @@ def fetch_bytes(
     """Download ``url``.
 
     FontLab's OpenSSL on Windows sees only the roots already in the Windows
-    store, so github.com can fail verification on a fresh machine. There the
-    system ``curl.exe`` (Schannel) is used instead; callers still check SHA-256.
+    store, so github.com can fail verification on a fresh machine. FontLab's
+    Python on macOS has no root certificates at all. On both, the system curl
+    (Schannel, Secure Transport) is used instead; callers still check SHA-256.
     """
     try:
         with urlopen(url, timeout=120) as response:
             return response.read()
     except urllib.error.URLError as error:
         reason = getattr(error, "reason", error)
-        curl = system_curl() if plat == "win32" else None
+        curl = platform_curl(plat)
         if curl is None or not isinstance(reason, ssl.SSLCertVerificationError):
             raise
         return curl_bytes(url, curl, runner)

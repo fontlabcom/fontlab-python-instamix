@@ -975,3 +975,106 @@ def test_install_project_when_install_fails_after_move_then_files_restored(data,
         bootstrap.install_project(root / "install.vfpy", data, requirements=NO_REQS)
     assert old.read_text() == "print('old version')\n"
     assert legacy.log_path(data, "com.example.proja").read_bytes() == log_before
+
+
+def _failing_urlopen(monkeypatch, reason):
+    import urllib.error
+    import urllib.request
+
+    def urlopen(url, timeout=0):
+        raise urllib.error.URLError(reason)
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+
+
+def test_stub_fetch_when_certificates_missing_then_system_curl(
+    tmp_path, monkeypatch, data
+):
+    import ssl
+
+    namespace = _stub_namespace(tmp_path, monkeypatch, data)
+    _failing_urlopen(monkeypatch, ssl.SSLCertVerificationError("no roots"))
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(Path, "is_file", lambda self: True)
+    calls = []
+
+    monkeypatch.setenv("SSL_CERT_FILE", "/nowhere.pem")
+    monkeypatch.setenv("CURL_CA_BUNDLE", "/nowhere.pem")
+    seen = {}
+
+    def run(command, **kwargs):
+        calls.append(command)
+        seen.update(kwargs["env"])
+        return subprocess.CompletedProcess(command, 0, b"body", b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert namespace["fetch"]("https://x", 60) == b"body"
+    assert calls == [
+        ["/usr/bin/curl", "-fsSL", "--proto", "=https", "--proto-redir", "=https",
+         "--max-time", "60", "--", "https://x"]
+    ]
+    assert "SSL_CERT_FILE" not in seen and "CURL_CA_BUNDLE" not in seen, seen.keys()
+    assert "PATH" in seen
+
+
+def test_stub_fetch_when_curl_fails_then_error_names_url(tmp_path, monkeypatch, data):
+    import ssl
+
+    namespace = _stub_namespace(tmp_path, monkeypatch, data)
+    _failing_urlopen(monkeypatch, ssl.SSLCertVerificationError("no roots"))
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(Path, "is_file", lambda self: True)
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda command, **kwargs: subprocess.CompletedProcess(command, 22, b"", b"404"),
+    )
+    with pytest.raises(RuntimeError, match="curl could not download https://x: 404"):
+        namespace["fetch"]("https://x", 60)
+
+
+def test_stub_fetch_when_offline_then_curl_not_tried(tmp_path, monkeypatch, data):
+    import urllib.error
+
+    namespace = _stub_namespace(tmp_path, monkeypatch, data)
+    _failing_urlopen(monkeypatch, OSError("offline"))
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **k: pytest.fail("curl must not run")
+    )
+    with pytest.raises(urllib.error.URLError):
+        namespace["fetch"]("https://x", 60)
+
+
+def test_stub_fetch_when_linux_cert_fails_then_curl_not_tried(
+    tmp_path, monkeypatch, data
+):
+    import ssl
+    import urllib.error
+
+    namespace = _stub_namespace(tmp_path, monkeypatch, data)
+    _failing_urlopen(monkeypatch, ssl.SSLCertVerificationError("no roots"))
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(Path, "is_file", lambda self: True)
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **k: pytest.fail("curl must not run")
+    )
+    with pytest.raises(urllib.error.URLError):
+        namespace["fetch"]("https://x", 60)
+
+
+def test_stub_fetch_when_curl_cannot_start_then_error_names_url(
+    tmp_path, monkeypatch, data
+):
+    import ssl
+
+    namespace = _stub_namespace(tmp_path, monkeypatch, data)
+    _failing_urlopen(monkeypatch, ssl.SSLCertVerificationError("no roots"))
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(Path, "is_file", lambda self: True)
+
+    def run(command, **kwargs):
+        raise subprocess.TimeoutExpired(command, 90)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    with pytest.raises(RuntimeError, match="curl could not download https://x"):
+        namespace["fetch"]("https://x", 60)

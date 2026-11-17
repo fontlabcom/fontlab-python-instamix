@@ -8,8 +8,11 @@ import json
 import os
 import re
 import shutil
+import ssl
+import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 import zipfile
 from email.parser import BytesParser
@@ -42,6 +45,30 @@ def site():
     return target
 
 
+def fetch(url, timeout):
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            return response.read()
+    except urllib.error.URLError as error:
+        # FontLab's Python can lack root certificates; the system curl has them.
+        curl = {"win32": Path(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "curl.exe"),
+                "darwin": Path("/usr/bin/curl")}.get(sys.platform)
+        if curl is None or not isinstance(error.reason, ssl.SSLCertVerificationError) or not curl.is_file():
+            raise
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        # Without these, curl would be pointed back at the store that just failed.
+        clean = {k: v for k, v in os.environ.items() if k not in ("SSL_CERT_FILE", "SSL_CERT_DIR", "CURL_CA_BUNDLE")}
+        command = [str(curl), "-fsSL", "--proto", "=https", "--proto-redir", "=https", "--max-time", str(timeout), "--", url]
+        try:
+            done = subprocess.run(command, capture_output=True, stdin=subprocess.DEVNULL, creationflags=flags,
+                                  timeout=timeout + 30, env=clean)
+        except (OSError, subprocess.TimeoutExpired) as failure:
+            raise RuntimeError("curl could not download %s: %s" % (url, failure)) from failure
+        if done.returncode != 0:
+            raise RuntimeError("curl could not download %s: %s" % (url, done.stderr.decode("utf-8", "replace").strip())) from error
+        return done.stdout
+
+
 def download(target, url=PYPI):
     local = sorted([*HERE.glob("dist/fontlab_python_instamix-*-py3-none-any.whl"),
                     *(HERE.parent / "fontlab-python-instamix" / "dist").glob("fontlab_python_instamix-*-py3-none-any.whl")])
@@ -50,14 +77,12 @@ def download(target, url=PYPI):
     if local:
         blob = local[0].read_bytes()
     else:
-        with urllib.request.urlopen(url, timeout=60) as response:
-            info = json.load(response)
+        info = json.loads(fetch(url, 60))
         wheel = next((u for u in info["urls"] if u["packagetype"] == "bdist_wheel"
                       and u["filename"].endswith("-py3-none-any.whl")), None)
         if wheel is None:
             raise RuntimeError("no compatible fontlab-instamix wheel on PyPI")
-        with urllib.request.urlopen(wheel["url"], timeout=120) as response:
-            blob = response.read()
+        blob = fetch(wheel["url"], 120)
         if hashlib.sha256(blob).hexdigest() != wheel["digests"]["sha256"]:
             raise RuntimeError("fontlab-instamix wheel failed its sha256 check")
     with zipfile.ZipFile(io.BytesIO(blob)) as archive:

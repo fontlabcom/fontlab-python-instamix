@@ -4,6 +4,26 @@ this_file: CHANGELOG.md
 
 # Changelog
 
+## 2026-11-17 — Downloads work when FontLab's Python has no root certificates (Issue 259 follow-ups)
+
+FontLab 9 for macOS ships a Python with no root certificates, so every HTTPS
+download failed with `CERTIFICATE_VERIFY_FAILED`: the stub could not fetch
+instamix from PyPI and instamix could not fetch uv.
+
+- `uv.fetch_bytes` and the stub's new `fetch` now retry a certificate failure
+  with the system curl: `/usr/bin/curl` on macOS and `System32\curl.exe` on
+  Windows. `uv.fetch_bytes` already did this on Windows; the macOS route and
+  the stub's retry are new. Other network errors are raised unchanged, and
+  nothing is retried on Linux.
+- curl is limited to HTTPS, including redirects, and the URL is passed after
+  `--`, so it cannot be read as an option.
+- curl runs without `SSL_CERT_FILE`, `SSL_CERT_DIR` and `CURL_CA_BUNDLE`, so it
+  uses the system store, not the one that just failed.
+- SHA-256 checks on the wheel and on uv are unchanged.
+
+Tested offline (481 tests) and with a real download from PyPI under an empty
+certificate store on macOS (Python 3.11, 0 roots). Not yet run inside FontLab.
+
 ## 2026-11-17 — Stub minimum version, checkout install, venv repair (Issue 259 follow-ups)
 
 Tested offline only (472 tests); FontLab for Windows and macOS runs are still
