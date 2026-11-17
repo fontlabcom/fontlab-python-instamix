@@ -23,4 +23,5 @@ this_file: TODO.md
 
 - [ ] Reconcile the Plugmix consumer with released managed-plugin refusal/bootstrap readiness, retain its separate PyPI publisher gate, and qualify native/Windows installation.
 - [ ] Detect a Windows venv whose `pyvenv.cfg` home sits on a uv minor-version junction and recreate it (Issue 259).
+- [ ] `stub_install.vfpy` `ensure()`: require a minimum instamix version (≥ 1.0.13) and upgrade from PyPI when older; today any importable instamix is accepted, so Windows users on 1.0.12 or earlier keep the uv (os error 448) and reinstall (`__pycache__`) failures until they run instamix's own installer (Issue 259).
 - [ ] Let instamix's own `install.vfpy` (`SELF_INSTALL`) install from the checkout it runs from instead of PyPI latest; today a checkout test silently installs the released version (Issue 259, F7).
