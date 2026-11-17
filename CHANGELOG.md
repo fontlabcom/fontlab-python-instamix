@@ -3,6 +3,18 @@ this_file: CHANGELOG.md
 ---
 # Changelog
 
+
+## 2026-11-17 — Managed plugin migration safety
+
+- Refuse distinct title-case plugin bundles with changed or unowned contents
+  before installation writes; retain their files and ownership receipt. Unchanged
+  owned copies/links and case-insensitive aliases continue to upgrade.
+- Require the callable migration preflight in reused and replacement bootstrap
+  providers; preserve previous packages/metadata/imports on replacement failure.
+- Verified 378 tests on ordinary Python and actual arm64 Python 3.11.14, including
+  the retained case-sensitive HFS+ fixture; complete changed modules exceed 80%.
+  Genuine 1.0.7 refusal/recovery and current wheel replacement pass in scratch.
+
 ## Unreleased
 
 - Package five plugin kinds from explicitly described Python drafts into canonical lowercase inner bundles; validate metadata before writes, preserve source/licence bytes and reuse agreeing plugin.json without executing drafts.

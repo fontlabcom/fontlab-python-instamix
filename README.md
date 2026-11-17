@@ -128,7 +128,9 @@ chooses one extension directory. See [examples and API](examples/plugins.md).
 
 `fontlab-instamix stub DIR` writes `install.vfpy` (`--force` replaces an
 existing file). In a checkout with `pyproject.toml`, the bootstrap uses an installed
-Instamix, otherwise the same validated wheel installer as the standalone file.
+Instamix with callable `extension.preflight_plugin_migration`, otherwise the same
+validated wheel installer as the standalone file. Older providers such as 1.0.7
+are replaced; a failed replacement restores their package, metadata and imports.
 It then calls `bootstrap.install_project(__file__)`. The canonical resource is
 `src/fontlab_instamix/stub_install.vfpy`; generated copies are checked for parity.
 
@@ -167,6 +169,9 @@ It matches the legacy `install.vfpy`:
 - `Scripts/Instamix/` holds `List Extensions.py` and `Uninstall <id>.py`.
 - For fontlabapp, the `fontlabapp.plugins` block is added to `initScript.py`, and removed again on uninstall; `initScript.py` is deleted if nothing else is in it. Empty folders under `Scripts/` that instamix created are pruned too (never `Scripts/` itself, never a folder that existed before install).
 - Dependencies uv installed from PyPI (for example fonttools) stay after uninstall: other extensions may share them, and the legacy installer also kept them. Sibling checkouts are detected only if their pyproject has a `[tool.fontlab-install]` table with a valid `id`; anything else (such as TypeRig) goes to uv.
+- Case-sensitive plugin suffix upgrades refuse before writes when a distinct
+  title-case bundle contains modified or unowned files, preserving its receipt.
+  Unchanged managed bundles migrate normally; filesystem aliases remain supported.
 - A legacy `install.vfpy` install of the same id is migrated first. Files it logged are removed; changed files are kept. If a kept file would collide with the new install, the install stops before it changes anything. Shared legacy tools (`fontlab_install.py`, `Scripts/Extensions/`) are removed once no legacy install remains.
 
 ## Development

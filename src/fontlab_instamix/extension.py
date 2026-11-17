@@ -219,6 +219,37 @@ def stage(folder: Path, target: Path, data: Path) -> None:
         shutil.rmtree(old)
 
 
+def preflight_plugin_migration(data: Path, pairs: list[tuple[Path, Path]], previous: dict | None) -> None:
+    """Refuse distinct legacy bundles that removal would retain before any writes."""
+    kinds = {"reporters": "Reporter", "filters": "Filter", "tools": "Tool",
+             "palettes": "Palette", "general": "General"}
+    roots = set()
+    for _, target in pairs:
+        parts = target.relative_to(data).parts
+        if len(parts) < 3 or parts[0] != "Extensions" or parts[1] not in kinds:
+            continue
+        suffix = ".fontlab" + kinds[parts[1]].lower()
+        if parts[2].endswith(suffix):
+            roots.add((data / Path(*parts[:3]), kinds[parts[1]]))
+    entries = {p: entry for entry in (previous or {}).get("entries", [])
+               if (p := _entry_path(data, entry)) is not None}
+    for canonical, kind in roots:
+        if not canonical.parent.is_dir():
+            continue
+        legacy_name = canonical.name[:-len(kind)] + kind
+        # Actual directory entries distinguish separate roots from case-insensitive aliases.
+        children = {p.name: p for p in canonical.parent.iterdir()}
+        legacy = children.get(legacy_name)
+        if legacy is None or (canonical.name not in children and canonical.exists() and legacy.samefile(canonical)):
+            continue
+        env.require_inside(data, legacy)
+        paths = [legacy, *legacy.rglob("*")] if legacy.is_dir() and not legacy.is_symlink() else [legacy]
+        for path in paths:
+            entry = entries.get(path)
+            if entry is None or entry.get("kind") not in {"dir", "link", "copy"} or not _ours(path, entry):
+                raise InstallError(f"legacy plugin bundle would be retained: {legacy}; preserve or move its owner files before installing {canonical.name}")
+
+
 def install_folder(
     folder: Path,
     data: Path,
@@ -255,8 +286,9 @@ def install_folder(
     _check_library(data, library)
     for _, destination in [*pairs, *generated]:
         env.require_inside(data, destination)
-    env.ensure_folders(data, version=version)
     previous = ledger.read(data, info.id)
+    preflight_plugin_migration(data, pairs, previous)
+    env.ensure_folders(data, version=version)
     backup = library.with_name(library.name + ".prev")
     if backup.exists() or backup.is_symlink():
         _remove_tree(data, backup)

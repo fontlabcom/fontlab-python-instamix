@@ -381,3 +381,58 @@ checks: 45 passed (0.37s). Full affected-module coverage: 345 passed (6.70s),
 wrap 92%, CLI 93%, GUI 94%, extension 93%. Targeted Ruff and diff checks pass.
 Receipts: fix1-red.txt, fix1-install-exact.txt, fix1-full-coverage.txt and
 fix1-detect.txt in issue256-features-graph. Independent re-review is next.
+
+
+## 2026-11-17 — Safe managed plugin suffix migration (Task 11)
+
+Added one extension.preflight_plugin_migration helper before managed installation
+writes and before project dependency/legacy operations. It examines only planned
+canonical bundles and their same-name title-case counterparts in the five plugin
+kinds. Actual directory entries and samefile distinguish filesystem aliases.
+Distinct legacy trees must be completely unchanged and owned by the prior receipt;
+otherwise installation refuses with InstallError, preserving files and receipt.
+Existing removal handles unchanged copies and editable links without new cleanup.
+
+All three shipped bootstrap copies require that actual callable helper, checking
+both reused imports and newly installed wheel APIs inside the existing rollback
+transaction. Plugmix's isolated consumer now uses the shared canonical template.
+Its obsolete header/80-line assertion became canonical parity plus readiness.
+Fixture wheels/parity mocks now provide the actual required interface.
+
+Baseline: 345 passed (6.95s). The real retained 64MB case-sensitive HFS+ fixture
+reproduced 21 failures/3 passes before the fix. Expanded focused tests: 30 passed
+(1.50s). Full ordinary CPython 3.14 suite: 378 passed (7.20s), both complete
+changed modules 92%. Full actual arm64 Python 3.11.14 on HFS+: 378 passed
+(10.67s), bootstrap 92%, extension 93%. Coverage also warns about temporary
+fixture modules removed by rollback; the production module counts are intact.
+The original App-discovery reproduction now keeps one bundle per scenario:
+unchanged upgrades; modified/unowned refuse, retaining old receipt entries.
+
+A genuine downloaded SHA-verified PyPI 1.0.7 wheel failed required readiness. An
+injected offline replacement failure preserved its usable prior package and
+metadata, then the genuine hatch-vcs built current wheel replaced it successfully
+in scratch storage. No version override, source fallback or user-folder install.
+Evidence: the controller-owned issue256-migration-graph directory contains
+red/focused/full logs, migration.json, genuine-wheels.json and executable probes.
+
+Pre-edit install_folder impact HIGH through API/CLI/GUI/bootstrap callers; project
+impact LOW. Template required_api UNKNOWN (.vfpy is absent from the graph),
+confirmed by direct source and tests. Combined graph HIGH, 7 files/6 symbols/14
+processes; it omits untracked tests/new helper and has analyzer flow-budget limits.
+Both graph home/storage were task-owned from first invocation; exclude bytes
+unchanged. No global registry/MCP use. No commit, push, tag, FontLab call or
+user-folder installation. Independent review and release/native/Windows gates
+remain open. The genuine built development version remains below release 1.0.7;
+release version selection is the controller's separate delivery gate.
+
+Final refreshed graph includes the new helper: its upstream impact is HIGH;
+combined detect-changes is CRITICAL (12 files, 19 symbols, 19 processes), including
+progress-document changes. Analyzer flow-budget omissions and .vfpy indexing
+limits remain explicit; no graph closure claim. Task-owned excludes still match.
+Plugmix consumer focused 3 tests and full prepared source suite 459 tests pass
+(5.63s); its unchanged complete-module check_coverage.py coverage.json passes.
+The final exact resolver runner remains held on genuine App 1.2.31, as Task 10
+records. Targeted lint and Instamix diff check pass. Plugmix's two touched files
+pass diff check; prior task's seven Markdown hard-line-break whitespace findings
+remain untouched. The HFS+ fixture image is retained and disk17 was gracefully
+detached after all tests/probes completed. Writer frozen for independent review.

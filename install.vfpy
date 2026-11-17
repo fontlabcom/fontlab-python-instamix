@@ -90,6 +90,9 @@ def remove(path):
 
 def required_api():
     importlib.import_module(PKG + ".legacy")
+    extension = importlib.import_module(PKG + ".extension")
+    if not callable(getattr(extension, "preflight_plugin_migration", None)):
+        raise ImportError("fontlab_instamix.extension.preflight_plugin_migration must be callable")
     gui = importlib.import_module(PKG + ".gui")
     if not callable(getattr(gui, "message", None)):
         raise ImportError("fontlab_instamix.gui.message must be callable")

@@ -11,3 +11,5 @@ this_file: TODO.md
 
 - [ ] Independently review generated-file rollback and qualify it on native/Windows installations; offline failure recovery passes.
 - [ ] Verify generated lowercase plugin bundles through the paired compatible App loader; packaging and copied/linked ZIP installation pass offline.
+
+- [ ] Independently review Task 11 managed plugin refusal/bootstrap readiness, reconcile the Plugmix consumer, and qualify release/native/Windows installation separately.

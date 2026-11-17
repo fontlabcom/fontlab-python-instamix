@@ -312,13 +312,16 @@ def install_project(
     if project.root in seen:
         return []
     seen.add(project.root)
+    data_manifest = manifest_data(project)
+    info = manifest.parse(data_manifest)
+    pairs = extension.plan(project.root, info, project.id, data)
+    extension.preflight_plugin_migration(data, pairs, ledger.read(data, project.id))
     records: list[dict] = []
     siblings, specs = sibling_dependencies(project)
     for sibling in siblings:
         records += install_project(
             sibling, data, copy=copy, requirements=requirements, _seen=seen
         )
-    data_manifest = manifest_data(project)
     data_manifest["python"]["requires"] = specs
     records.append(_install_checkout(project, data_manifest, data, copy, requirements))
     launchers.write_list(data)
