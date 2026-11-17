@@ -22,3 +22,4 @@ this_file: TODO.md
 - [ ] Verify generated lowercase plugin bundles through the paired compatible App loader; packaging and copied/linked ZIP installation pass offline.
 
 - [ ] Reconcile the Plugmix consumer with released managed-plugin refusal/bootstrap readiness, retain its separate PyPI publisher gate, and qualify native/Windows installation.
+- [ ] Detect a Windows venv whose `pyvenv.cfg` home sits on a uv minor-version junction and recreate it (Issue 259).

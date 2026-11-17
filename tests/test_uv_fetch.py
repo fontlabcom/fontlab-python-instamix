@@ -63,3 +63,23 @@ def test_curl_bytes_when_curl_fails_then_uv_error(tmp_path):
 
     with pytest.raises(uv.UvError, match="404"):
         uv.curl_bytes("https://x", tmp_path / "curl.exe", bad)
+
+
+def test_fetch_when_win32_without_curl_then_raises(monkeypatch):
+    monkeypatch.setattr(uv, "system_curl", lambda: None)
+    with pytest.raises(urllib.error.URLError):
+        uv.fetch_bytes("https://x", plat="win32", urlopen=failing_open(ssl.SSLCertVerificationError("bad")), runner=ok_runner)
+
+
+def test_curl_bytes_when_curl_cannot_start_then_uv_error(tmp_path):
+    def missing(command, **kwargs):
+        raise FileNotFoundError(command[0])
+    with pytest.raises(uv.UvError, match="curl could not download"):
+        uv.curl_bytes("https://x", tmp_path / "curl.exe", missing)
+
+
+def test_download_when_curl_bytes_bad_hash_then_refuses(tmp_path):
+    def fetch(url):
+        return b"0" * 64 + b"  uv.zip" if url.endswith(".sha256") else b"tampered"
+    with pytest.raises(uv.UvError):
+        uv.download(tmp_path, "0.9.0", fetch=fetch)

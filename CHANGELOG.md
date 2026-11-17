@@ -9,8 +9,9 @@ this_file: CHANGELOG.md
 Tested in FontLab 9.1.9813 for Windows (x64 on Windows 11 ARM, Parallels),
 starting from an empty data folder:
 
-- uv venv requests now pin the host's exact Python patch version
-  (`cpython-3.11.9-windows-x86_64-none`) inside FontLab. A minor-only request
+- On Windows, uv venv requests now pin the host's exact Python patch version
+  (`cpython-3.11.9-windows-x86_64-none`) inside FontLab; macOS keeps the
+  minor-version request. A minor-only request
   made uv follow its `cpython-3.11-…` directory junction, which processes
   started from FontLab cannot cross (os error 448, untrusted mount point).
 - On Windows, uv keeps its managed Python in `<data>/python/uv/python`
@@ -23,6 +24,11 @@ Native evidence: uv downloaded (0.13.9), venv created, `humanize` and
 `tabulate` installed from PyPI and imported, `fontlab-fly` installed through
 `install.vfpy` with its sibling packages. Records are in the workspace
 `WORK/issue259/results/`. macOS native behaviour was not retested.
+
+Known limits: a Windows venv created before this change keeps its
+`pyvenv.cfg` home on the old junction and must be removed by hand; the first
+Windows run downloads CPython (about 24 MiB) into the data folder, so it
+needs network access.
 
 ## 2026-11-17 — Remopy release qualification
 

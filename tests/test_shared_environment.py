@@ -188,3 +188,21 @@ def test_request_when_host_patch_known_then_pins_patch():
 def test_request_when_host_minor_differs_then_uses_target_minor():
     target = env.Target("3.11", "win32", "x86_64")
     assert venv.request(target, host="3.13.2") == "cpython-3.11-windows-x86_64-none"
+
+
+def test_request_when_mac_host_patch_known_then_keeps_minor():
+    target = env.Target("3.11", "darwin", "arm64")
+    assert venv.request(target, host="3.11.9") == "cpython-3.11-macos-aarch64-none"
+
+
+def test_request_when_host_prerelease_then_keeps_minor():
+    target = env.Target("3.11", "win32", "x86_64")
+    assert venv.request(target, host="3.11.0rc1") == "cpython-3.11-windows-x86_64-none"
+
+
+def test_request_when_inside_fontlab_then_reads_host(monkeypatch):
+    import platform
+    monkeypatch.setitem(sys.modules, "fontlab", object())
+    monkeypatch.setattr(platform, "python_version", lambda: "3.11.9")
+    target = env.Target("3.11", "win32", "x86_64")
+    assert venv.request(target) == "cpython-3.11.9-windows-x86_64-none"

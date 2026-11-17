@@ -83,12 +83,16 @@ def system_curl() -> Path | None:
 
 def curl_bytes(url: str, curl: Path, runner=subprocess.run) -> bytes:
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    result = runner(
-        [str(curl), "-fsSL", "--max-time", "300", url],
-        capture_output=True,
-        stdin=subprocess.DEVNULL,
-        creationflags=flags,
-    )
+    try:
+        result = runner(
+            [str(curl), "-fsSL", "--max-time", "300", url],
+            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            creationflags=flags,
+            timeout=330,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise UvError(f"curl could not download {url}: {error}") from error
     if result.returncode != 0:
         detail = result.stderr.decode("utf-8", "replace").strip()
         raise UvError(f"curl could not download {url}: {detail}")
