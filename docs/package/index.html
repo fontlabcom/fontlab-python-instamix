@@ -770,7 +770,7 @@
 <p>Users install a project by opening <code>install.vfpy</code> in FontLab. Write the stub with:</p>
 <div class="highlight"><pre><span></span><code>fontlab-instamix<span class="w"> </span>stub<span class="w"> </span>.
 </code></pre></div>
-<p>The stub is about 40 lines. It imports an installed instamix; if there is none, it uses a sibling <code>fontlab-python-instamix</code> checkout, or downloads the instamix wheel from PyPI and checks its SHA-256. Then it installs the project and shows a message with the id and version. Commit the stub; rerun <code>stub --force</code> to update it.</p>
+<p>The stub imports an installed instamix 1.0.13 or later. If there is none, or the installed one is older, it uses a sibling <code>fontlab-python-instamix</code> checkout, or downloads the instamix wheel from PyPI and checks its SHA-256. If that fails, the older copy is put back. Then it installs the project and shows a message with the id and version. Commit the stub; rerun <code>stub --force</code> to update it.</p>
 <h2 id="which-to-choose">Which to choose</h2>
 <table>
 <thead>
