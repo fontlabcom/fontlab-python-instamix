@@ -3,6 +3,8 @@ this_file: TODO.md
 ---
 # Remaining Issue 256 work
 
+- [ ] Independently review, integrate and publish the installer entry-context guard; qualify regenerated consumer templates without lifting the existing execution or owner-recovery holds.
+
 - [ ] Independently review, integrate and publish the failed legacy-upgrade preservation fix; requalify whole-tree migration using the released provider and update consumer stubs before rollout.
 
 - [ ] Verify the implemented remote CLI against live FontLab: nonce, owned package, standalone and embedded imports; qualify Windows runtime separately.

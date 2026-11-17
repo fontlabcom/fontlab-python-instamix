@@ -5,6 +5,12 @@ this_file: fontlab-python-instamix/PLAN.md
 
 ## Current preservation qualification
 
+Independently review, integrate and publish the installer entry-context guard.
+Regenerate consumer templates only after qualification. Keep consumer execution
+and owner-folder recovery held under the existing incident review; the guard
+does not restore prior folder state. Native and Windows admission need separate
+verification.
+
 Independently review and integrate the legacy-upgrade rollback and required
 bootstrap capability. Publish the fixed provider and self/project installer,
 then re-run the real Examples/Scriptmix legacy fixtures against the released

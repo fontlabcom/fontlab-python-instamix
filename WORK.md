@@ -3,6 +3,23 @@ this_file: WORK.md
 ---
 # Issue 256 implementation review
 
+## 2026-11-17 — Installer entry context
+
+All three standalone installer copies check the existing read-only site context
+before bootstrapping, including when a ready provider is reused. External entry
+execution without FontLab or FONTLAB_DATA_DIR now refuses before deployment.
+The import sentinel remains side-effect free; explicit data-folder and host
+preference contexts retain their behavior. CLI and direct API defaults are unchanged.
+
+Twelve fake-provider cases cover all copies, including blocked deployment before
+removing the test data override. The three missing-context cases fail before the
+fix. All 411 arm64 Python 3.11 tests pass in 7.70 seconds; compile, template
+parity and scoped lint checks pass. No real provider, installer deployment or
+native host is executed by these
+new regressions. Independent review, integration and release remain separate.
+Consumer execution and owner-folder recovery remain held pending their existing
+incident review; this source guard does not repair or prove prior folder state.
+
 ## 2026-11-17 — Failed legacy upgrade preservation
 
 A legacy project upgrade now keeps a private snapshot of its affected targets,
