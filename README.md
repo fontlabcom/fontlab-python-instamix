@@ -27,7 +27,8 @@ else `fontlab.flPreferences().dataPathDefault`, else
 
 ## Install inside FontLab
 
-Open the single `install.vfpy` in FontLab 9 (File > Open). It installs the
+[Download the single install.vfpy](https://code.fontlab.com/fontlab-python-instamix/install.vfpy)
+and open it in FontLab 9 (File > Open). It installs the
 compatible PyPI wheel with SHA-256 verification, including distribution metadata
 and its licence. An adjacent `dist/` wheel or a sibling
 `../fontlab-python-instamix/dist/` wheel works offline; keep only the intended

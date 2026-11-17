@@ -16,6 +16,13 @@ This site is a guide for FontLab developers. It follows one piece of work from t
 
 The [reference](reference.md) lists every command, manifest key and project key.
 
+## Install Instamix
+
+[Download install.vfpy](https://code.fontlab.com/fontlab-python-instamix/install.vfpy)
+and open it with **File > Open** in FontLab 9.
+It bootstraps Instamix without another Python package installer. The script is
+distributed under the [project licence](assets/LICENSE).
+
 ## Two routes
 
 | Route | You ship | Best for |

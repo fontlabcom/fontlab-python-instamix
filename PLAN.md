@@ -1,7 +1,15 @@
 ---
 this_file: fontlab-python-instamix/PLAN.md
 ---
+
 # fontlab-python-instamix plan (issue 256)
+
+## Public download qualification
+
+Integrate the reviewed static installer download and verify the public HTTP body
+against the canonical source before delivering guides that link to it. Keep the
+API site's frozen-input, privacy and browser gates unchanged.
+
 
 ## Current preservation qualification
 

@@ -1,7 +1,24 @@
 ---
 this_file: WORK.md
 ---
+
 # Issue 256 implementation review
+
+## 2026-11-17 — Public standalone installer download
+
+The existing strict docs build now publishes the exact root install.vfpy as a
+static download. The homepage and README link to its canonical public URL and
+the homepage links the project licence. Only that exact root asset is allowed
+through the source-download test; all other script and private-payload bans
+remain intact. Reproducible builds now include the installer in their full-file
+hash comparison.
+
+The new missing-asset regression failed first, then 36 docs tests passed in
+5.064 seconds. Full arm64 Python 3.11 source checks passed 399 tests in 11.51
+seconds with an explicit owned scratch data root. Runtime modules and installer
+bytes are unchanged. This qualifies the local build, not the live URL;
+independent review, delivery and exact HTTP-byte verification remain open.
+
 
 ## 2026-11-17 — Failed legacy upgrade preservation
 

@@ -18,12 +18,13 @@ class ReproducibleBuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             shutil.copytree(ROOT / 'src_docs', root / 'src_docs')
+            shutil.copy2(ROOT / 'install.vfpy', root / 'install.vfpy')
             env = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
             env.pop('SOURCE_DATE_EPOCH', None)
             env.pop('GIT_INDEX_FILE', None)
             env.update(GIT_AUTHOR_DATE='2026-11-05T12:00:00Z', GIT_COMMITTER_DATE='2026-11-05T12:00:00Z')
             git = [shutil.which('git'), '-C', str(root)]
-            for args in (['init', '-b', 'main'], ['config', 'user.name', 'Fixture'], ['config', 'user.email', 'fixture@example.invalid'], ['add', 'src_docs'], ['commit', '-m', 'source']):
+            for args in (['init', '-b', 'main'], ['config', 'user.name', 'Fixture'], ['config', 'user.email', 'fixture@example.invalid'], ['add', 'src_docs', 'install.vfpy'], ['commit', '-m', 'source']):
                 subprocess.run(git + args, env=env, check=True, capture_output=True)
             epoch = subprocess.check_output(git + ['show', '-s', '--format=%ct', 'HEAD'], env=env, text=True).strip()
             bindir = root / 'bin'
@@ -47,6 +48,7 @@ cli()
             self.assertEqual(result.returncode, 0, result.stderr)
             first = {str(p.relative_to(root / 'docs')): hashlib.sha256(p.read_bytes()).hexdigest() for p in (root / 'docs').rglob('*') if p.is_file()}
             self.assertIn('index.html', first)
+            self.assertIn('install.vfpy', first)
             self.assertIn('sitemap.xml', first)
             self.assertIn(datetime.fromtimestamp(int(epoch), UTC).strftime('%Y-%m-%d'), (root / 'docs/sitemap.xml').read_text())
             env.update(GIT_AUTHOR_DATE='2026-11-07T00:00:01Z', GIT_COMMITTER_DATE='2026-11-07T00:00:01Z')

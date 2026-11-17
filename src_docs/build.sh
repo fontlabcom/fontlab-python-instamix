@@ -7,4 +7,5 @@ if test -z "${SOURCE_DATE_EPOCH:-}"; then
 fi
 export SOURCE_DATE_EPOCH
 properdocs build --strict --clean -f src_docs/mkdocs.yml
+cp install.vfpy docs/install.vfpy
 touch docs/.nojekyll

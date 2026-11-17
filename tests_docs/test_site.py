@@ -38,6 +38,14 @@ class Page(HTMLParser):
 
 
 class SiteTests(unittest.TestCase):
+    def test_public_installer_download_when_built_then_matches_source(self):
+        payload = (SITE / 'install.vfpy').read_bytes()
+        self.assertEqual(payload, (ROOT / 'install.vfpy').read_bytes())
+        compile(payload, 'install.vfpy', 'exec')
+        links = Page((SITE / 'index.html').read_text()).links
+        self.assertIn('https://code.fontlab.com/fontlab-python-instamix/install.vfpy', links)
+        self.assertIn('assets/LICENSE', links)
+
     def test_all_generated_internal_links_and_fragments_resolve(self):
         for path in SITE.rglob('*.html'):
             for link in Page(path.read_text()).links:
@@ -87,7 +95,8 @@ class SiteTests(unittest.TestCase):
         for path in SITE.rglob('*'):
             if path.is_file():
                 self.assertNotIn('.DS_Store', path.parts)
-                self.assertNotIn(path.suffix, ('.py', '.pyi', '.vfpy', '.whl', '.zip'))
+                if path != SITE / 'install.vfpy':
+                    self.assertNotIn(path.suffix, ('.py', '.pyi', '.vfpy', '.whl', '.zip'))
                 payload = path.read_bytes()
                 for marker in private_markers:
                     self.assertFalse(marker in payload, (path, marker))
