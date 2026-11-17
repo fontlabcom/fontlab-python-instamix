@@ -117,6 +117,13 @@ Unknown manifest keys are errors, except `this_file`.
 
 See `examples/com.example.hello.fontlabext`.
 
+## Plugin drafts and selection helpers
+
+`wrap --kind reporter --plugin-id Demo --name Demo --entry demo:Demo
+--min-app-version 1.0.0` packages an existing App-compatible draft.
+`gui.install_selected()` selects multiple archives/manifests; `folder=True`
+chooses one extension directory. See [examples and API](examples/plugins.md).
+
 ## Stub install.vfpy for other projects
 
 `fontlab-instamix stub DIR` writes `install.vfpy` (`--force` replaces an

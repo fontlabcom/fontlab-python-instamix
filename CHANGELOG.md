@@ -5,6 +5,10 @@ this_file: CHANGELOG.md
 
 ## Unreleased
 
+- Package five plugin kinds from explicitly described Python drafts into canonical lowercase inner bundles; validate metadata before writes, preserve source/licence bytes and reuse agreeing plugin.json without executing drafts.
+- Add plugin options to `wrap` and `wrap.make_plugin`; copied and linked archive installation retain the required kind-folder parent inside Library.
+- Add lazy PythonQt multiple archive/manifest selection, folder selection and `gui.install_selected`, with cancellation and per-path partial-failure reports, including committed extensions in a partly failed ZIP. Archive exceptions retain their original identity and expose `installed_records`. Existing message reports remain print-only.
+
 - Install and uninstall reports no longer open modal dialogs. `gui.message` now only prints, so inside FontLab the report goes to the Output panel. The uninstall Yes/No confirmation is unchanged.
 
 - Documentation website at https://code.fontlab.com/fontlab-python-instamix/: a

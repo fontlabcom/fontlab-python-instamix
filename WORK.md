@@ -326,3 +326,58 @@ Python (.vfpy); unqualified ensure resolved unrelated uv.ensure, which was not
 used as approval. Direct template callers are required_api/ensure and the final
 standalone/project action; exact template equality and focused runtime checks
 cover the generated consumers. No native, owner install or delivery attempted.
+
+## 2026-11-17 — Draft plugin packaging and extension selection
+
+`wrap.make_plugin` and CLI plugin options package five explicit kinds without
+importing App or executing the draft. Six metadata fields and entry-module paths
+are checked before output writes; existing plugin.json must agree and keeps its
+bytes. Code, relative helper modules, stem and licence are copied unchanged into
+canonical lowercase bundles. Stage on the output filesystem before publishing.
+The outer manifest maps Extensions/<kind-folder> to that same target, because
+the existing destination provider correctly refuses a bare Extensions root.
+This preserves the inner parent inside Library and per-file symlink resolution.
+
+Lazy PythonQt helpers now select multiple archives/manifests or one directory;
+`install_selected` calls the public install API, prints each result/failure and
+continues remaining selections. Cancellation is empty. Console paths are literal,
+one per line. Existing message remains print-only. Local Echopy QtGui.pyi native
+signatures at 60884/61003/61073 establish str/str/tuple respectively; supplemental
+Qt C++ documents QString/QStringList. Exact bundled PythonQt converter source was
+not found in the bounded Proteus source inspection. Mocks prove handling of flat
+strings/sequences, cancellation and partial failures, not host dialog behavior.
+
+Baseline: 312 passed (7.03s). New red checks: 21 plugin failures and eight picker
+failures. Focused final: 32 passed (0.39s). Complete coverage run: 344 passed
+(6.89s), ordinary macOS CPython 3.14.10; complete wrap 92%, CLI 93%, GUI 94%.
+Targeted Ruff passes with only pre-existing Progress.__enter__ PYI034 excluded;
+no new lint exclusions in source/config. git diff --check passes. Removed
+unrelated formatter changes from existing wrap/CLI/Progress code.
+
+Both GitNexus environment variables use issue256-features-graph task-owned home
+and storage. Pre-edit parser LOW/exact; cmd_wrap and pick_file UNKNOWN because
+registered callbacks/references have no indexed caller edges. Current source and
+ast-grep confirmed cmd_wrap is registered by parser and dispatched by main;
+pick_file had no consumers. Initial index reports truncated execution flows, so
+absence is not coverage. Final refreshed change analysis is CRITICAL (17 symbols, 16 flows); independent
+review/controller checks remain required. Receipts live in the sibling issue256-features-graph
+folder; task-9-report.md records commands and limits. No native calls, user-folder
+installation, commit, push, tag, dependency addition or App/Plugmix edit occurred.
+
+### Task 9 review fix 1 — partial archive outcomes
+
+Controller reproduced a multi-extension archive where the first extension commits
+and the second collides with owner data. Added a real ZIP regression: it failed
+because the original exception had no successful-record information. Archive
+installation now annotates and re-raises that same exception with installed_records
+for already committed extensions. GUI selection reports those successes alongside
+the failed path and returns them; the existing owner file stays byte-exact.
+This is not archive-wide rollback, and direct callers still receive the original
+failure. No new exception class or installer mechanism was added.
+
+Exact pre-edit extension.install graph impact: HIGH, four callers; its shared API,
+CLI, bootstrap and GUI boundaries were considered. Focused extension + selection
+checks: 45 passed (0.37s). Full affected-module coverage: 345 passed (6.70s),
+wrap 92%, CLI 93%, GUI 94%, extension 93%. Targeted Ruff and diff checks pass.
+Receipts: fix1-red.txt, fix1-install-exact.txt, fix1-full-coverage.txt and
+fix1-detect.txt in issue256-features-graph. Independent re-review is next.

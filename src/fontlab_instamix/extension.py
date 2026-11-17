@@ -384,7 +384,11 @@ def install(
     requirements=None,
     target: env.Target | None = None,
 ) -> list[dict]:
-    """Install an extension folder, its manifest, or all folders in an archive."""
+    """Install an extension folder, its manifest, or all folders in an archive.
+
+    Archive failures retain the original exception and attach installed_records
+    for the extensions already committed before the failure.
+    """
     if data is None:
         data = env.data_dir()
     path = Path(path)
@@ -393,11 +397,15 @@ def install(
     if is_zip(path) and path.is_file():
         with tempfile.TemporaryDirectory(prefix="instamix-") as temp:
             records, hooks = [], []
-            for folder in unpack(path, Path(temp)):
-                records.append(install_folder(folder, data, copy=copy, requirements=requirements, target=target))
-                hook = hook_for(folder)
-                if hook and hook not in hooks:
-                    hooks.append(hook)
+            try:
+                for folder in unpack(path, Path(temp)):
+                    records.append(install_folder(folder, data, copy=copy, requirements=requirements, target=target))
+                    hook = hook_for(folder)
+                    if hook and hook not in hooks:
+                        hooks.append(hook)
+            except Exception as error:
+                error.installed_records = records.copy()
+                raise
             for hook in hooks if run_hooks else []:
                 try:
                     runpy.run_path(str(hook), run_name="__main__")

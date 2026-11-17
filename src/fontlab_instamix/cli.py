@@ -72,7 +72,29 @@ def cmd_pkg_list(args) -> int:
 def cmd_wrap(args) -> int:
     source = Path(args.source)
     ext_id = args.id or f"com.example.{wrap.slug(source.stem)}"
-    folder = wrap.make_folder(source, Path(args.out), ext_id, name=args.name, version=args.version)
+    plugin_options = (args.plugin_id, args.entry, args.min_app_version)
+    if args.kind:
+        if not all(plugin_options) or not args.name:
+            raise ValueError(
+                "plugin wrapping requires --plugin-id, --name, --entry and --min-app-version"
+            )
+        folder = wrap.make_plugin(
+            source,
+            Path(args.out),
+            ext_id,
+            name=args.name,
+            version=args.version,
+            kind=args.kind,
+            plugin_id=args.plugin_id,
+            entry=args.entry,
+            min_app_version=args.min_app_version,
+        )
+    else:
+        if any(plugin_options):
+            raise ValueError("plugin metadata requires --kind")
+        folder = wrap.make_folder(
+            source, Path(args.out), ext_id, name=args.name, version=args.version
+        )
     print(folder)
     if args.zip:
         print(wrap.make_zip([folder], folder.with_suffix(".fontlabextz")))
@@ -148,6 +170,17 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--version", default="0.1.0")
     s.add_argument("--out", default=".")
     s.add_argument("--zip", action="store_true", help="also write a .fontlabextz")
+    s.add_argument(
+        "--kind",
+        choices=wrap.PLUGIN_KINDS,
+        help="package an App-compatible plugin draft",
+    )
+    s.add_argument(
+        "--plugin-id",
+        help="stable plugin class identifier, separate from extension --id",
+    )
+    s.add_argument("--entry", help="plugin module:Class")
+    s.add_argument("--min-app-version", help="minimum App three-part release version")
     s.set_defaults(func=cmd_wrap)
 
     s = sub.add_parser("pack", help="pack extension folders into one .fontlabextz")
