@@ -3,6 +3,17 @@ this_file: CHANGELOG.md
 ---
 # Changelog
 
+## Unreleased
+
+- Documentation website at https://code.fontlab.com/fontlab-python-instamix/: a
+  developer guide to developing, packaging, deploying and delivering FontLab 9
+  scripts, Python packages and plugins with instamix, plus a command, manifest,
+  project-table and plugin.json reference. Commands and output were checked
+  against a scratch data folder. ProperDocs + MaterialX with the light fltheme26
+  theme; sources in `src_docs/`, generated output in `docs/`;
+  `.github/workflows/docs.yml` rebuilds and checks it on every main commit;
+  `tests_docs/` holds 35 site tests.
+
 ## 1.0.3 (2026-11-16)
 
 - Legacy migration moves files the legacy log recorded (`hashes`, `kept`) at new install targets to `Extensions/.instamix/backup/<id>/<UTC>/` instead of refusing, restores them if the install fails, and still applies after an earlier `migrated_to` uninstall. Unrecorded collisions still refuse. Reruns never move instamix's own files, backup folders are never overwritten, and a rollback restore is logged as `restored`.

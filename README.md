@@ -6,6 +6,8 @@ this_file: README.md
 Installs extensions, scripts and Python packages into FontLab 9. Stdlib only,
 runs inside FontLab's embedded Python 3.11 and from an ordinary terminal.
 
+Documentation: <https://code.fontlab.com/fontlab-python-instamix/>
+
 - **Extensions**: `.fontlabext` folders and `.fontlabextz` zips are copied to
   `<data>/Extensions/Library/<id>.fontlabext`, then their files are linked
   into `Scripts`, `Encoding`, `Codepage`, `Actions`, `Data` and
