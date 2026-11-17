@@ -203,3 +203,22 @@ def test_uninstall_when_ledger_leaf_is_link_then_install_preserved(data, example
         extension.uninstall('com.example.hello', data)
     assert snapshot(data) == before
     assert outside.read_text() == 'sentinel'
+
+
+def test_upgrade_when_placement_fails_then_generated_folder_files_restored(data, example, tmp_path, monkeypatch):
+    """Rollback refills a generated folder it removed (the old .dist-info was left empty)."""
+    source = tmp_path / 'example-1.0.dist-info'
+    source.mkdir()
+    (source / 'METADATA').write_text('Version: 1.0\n')
+    target = env.site_packages(data) / source.name
+    extension.install_folder(example, data, copy=True, generated=[(source, target)])
+    before = snapshot(data)
+    assert before[str((target / 'METADATA').relative_to(data))] == ('file', b'Version: 1.0\n')
+
+    def fail(self, source, target):
+        raise RuntimeError('placement failure')
+
+    monkeypatch.setattr(extension.Placement, 'place', fail)
+    with pytest.raises(RuntimeError, match='placement failure'):
+        extension.install_folder(example, data, copy=True, generated=[(source, target)])
+    assert snapshot(data) == before
