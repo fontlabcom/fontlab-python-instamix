@@ -602,7 +602,7 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
     blob = _wheel({
         "fontlab_instamix/__init__.py": "NEW = True\n",
         "fontlab_instamix/legacy.py": "",
-        "fontlab_instamix/extension.py": "def preflight_plugin_migration(*args): pass\n",
+        "fontlab_instamix/extension.py": "def preflight_plugin_migration(*args): pass\ndef preflight_destinations(*args): pass\n",
         "fontlab_instamix/gui.py": "def message(text): pass\n",
         "fontlab_instamix/bootstrap.py": "def install_project(path): return []\ndef _legacy_rollback(*args): pass\n",
         "fontlab_python_instamix-1.0.13.dist-info/METADATA": "Name: fontlab-python-instamix\nVersion: 1.0.13\n",
@@ -624,7 +624,7 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
         if (old / "legacy.py").exists():
             from types import SimpleNamespace
             if name.endswith(".extension"):
-                return SimpleNamespace(preflight_plugin_migration=lambda *args: None)
+                return SimpleNamespace(preflight_plugin_migration=lambda *args: None, preflight_destinations=lambda *args: None)
             if name.endswith(".gui"):
                 return SimpleNamespace(message=lambda text: None)
             if name.endswith(".bootstrap"):
@@ -645,7 +645,7 @@ def test_stub_ensure_when_old_instamix_installed_then_replaced(
 
 STUB_MODULES = {
     "legacy.py": "",
-    "extension.py": "def preflight_plugin_migration(*args): pass\n",
+    "extension.py": "def preflight_plugin_migration(*args): pass\ndef preflight_destinations(*args): pass\n",
     "gui.py": "def message(text): pass\n",
     "bootstrap.py": "def install_project(path): return []\ndef _legacy_rollback(*args): pass\n",
 }

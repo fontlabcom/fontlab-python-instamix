@@ -250,6 +250,46 @@ def preflight_plugin_migration(data: Path, pairs: list[tuple[Path, Path]], previ
                 raise InstallError(f"legacy plugin bundle would be retained: {legacy}; preserve or move its owner files before installing {canonical.name}")
 
 
+
+def preflight_destinations(data: Path, pairs: list[tuple[Path, Path]], previous: dict | None) -> None:
+    """Report retained destinations before removing any previously installed files."""
+    entries = {path: entry for entry in (previous or {}).get("entries", [])
+               if (path := _entry_path(data, entry)) is not None}
+
+    def removable(path: Path) -> bool:
+        entry = entries.get(path)
+        if entry is None and (path.exists() or path.is_symlink()):
+            # Case-only parent renames can address the same directory on macOS.
+            entry = next((item for recorded, item in entries.items()
+                          if recorded.name == path.name and (recorded.exists() or recorded.is_symlink())
+                          and path.parent.samefile(recorded.parent)), None)
+        if entry is None or not _ours(path, entry):
+            return False
+        if entry["kind"] != "dir":
+            return True
+        for child in path.iterdir():
+            if (child.name == "__pycache__" and child.is_dir() and not child.is_symlink()
+                    and all(item.is_file() and not item.is_symlink() and item.suffix == ".pyc"
+                            for item in child.iterdir())):
+                continue
+            if not removable(child):
+                return False
+        return True
+
+    conflicts = []
+    for _, path in pairs:
+        env.require_inside(data, path)
+        if not (path.exists() or path.is_symlink()) or removable(path):
+            continue
+        actual = "symlink" if path.is_symlink() else "directory" if path.is_dir() else "file"
+        expected = "recorded " + entries[path]["kind"] if path in entries else "unrecorded destination"
+        conflicts.append(f"{path}: {expected}; found {actual} containing retained or changed content")
+    if conflicts:
+        raise InstallError("refusing to overwrite install conflicts (existing files were kept):\n" + "\n".join(conflicts)
+                           + "\nMove each conflicting path to a separate backup outside the install destinations, "
+                           "then rerun the installer. Do not delete it; compare and recover your files afterwards.")
+
+
 def install_folder(
     folder: Path,
     data: Path,
@@ -288,6 +328,7 @@ def install_folder(
         env.require_inside(data, destination)
     previous = ledger.read(data, info.id)
     preflight_plugin_migration(data, pairs, previous)
+    preflight_destinations(data, [*pairs, *generated], previous)
     env.ensure_folders(data, version=version)
     backup = library.with_name(library.name + ".prev")
     if backup.exists() or backup.is_symlink():
@@ -391,6 +432,7 @@ def install_folder(
         if backup.exists():
             _remove_tree(data, backup)
     if requirement_error is not None:
+        requirement_error.installed_records = getattr(requirement_error, "installed_records", []) + [record]
         raise requirement_error
     return record
 
@@ -436,7 +478,7 @@ def install(
                     if hook and hook not in hooks:
                         hooks.append(hook)
             except Exception as error:
-                error.installed_records = records.copy()
+                error.installed_records = records + getattr(error, "installed_records", [])
                 raise
             for hook in hooks if run_hooks else []:
                 try:

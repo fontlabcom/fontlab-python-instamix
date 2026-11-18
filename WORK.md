@@ -4,6 +4,46 @@ this_file: WORK.md
 
 # Issue 256 implementation review
 
+## 2026-11-18 — Issue 271 installer conflicts and local wheels
+
+Modern receipt conflicts are checked before tracked project files or sibling
+dependencies change. A link replaced by a directory, edited copied file or
+unrecorded package content is preserved and reported with backup-and-retry
+instructions. Existing case-only plugin parent aliases remain supported.
+First-install conflicts can still follow committed sibling installs; recursive
+errors retain those records. CLI and regenerated installer stubs report partial
+results and failures, with missing requirements labelled incomplete. APIs still
+raise and CLI failures remain nonzero. New stubs require the conflict preflight
+capability before reusing an installed provider.
+
+Bootstrap deduplicates resolved local wheel paths (including the self-installer's
+double lookup), chooses the newest eligible numeric project version, refuses
+conflicting bytes at the selected version and checks filename/metadata agreement.
+Existing extraction safety, SHA-256 checks and failed-upgrade restoration remain.
+Wheel ordering covers this project's three-part releases and dev/a/b/rc/post/local
+suffixes; unsupported forms fail with instructions. No dependency was added.
+
+Validation: baseline 481 tests passed; 11 of the first 12 new regressions failed
+before implementation. Final combined source: 528 arm64 Python 3.11 tests passed
+in 9.60 seconds, with 90.94% combined statement/branch coverage across complete
+bootstrap/extension/cli/gui modules (80% gate retained). Scoped lint, strict docs
+build and 36 docs tests passed; final wheel and sdist builds passed. Independent
+read-only review approved the combined diff against 60c9c80 and independently
+passed 179 focused tests in 0.90 seconds. Temporary fake-provider files trigger
+coverage source warnings; the actual complete modules are reported separately.
+
+Fresh upstream main is 60c9c80; its release/build changes are preserved in the
+integration successor. Reindexed graph change analysis reports 23 symbols and
+34 affected flows, critical risk. Analyzer process extraction remains truncated
+after rerun (120 untraced entries, 11 dropped processes); this is incomplete graph
+evidence, supplemented by structural caller checks and independent review, not
+an all-clear. Task-owned graph registries remain isolated. Evidence is retained
+under the controller's Issue 271 data folder.
+
+No native or owner-folder operation ran; the required serialized guard is absent.
+Release/distribution and consumer stub propagation remain follow-ups.
+
+
 ## 2026-11-17 — Remopy release qualification
 
 Remopy 2.0.7 includes the Wine/CrossOver providers and CLI routing in its

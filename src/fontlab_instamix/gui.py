@@ -118,7 +118,8 @@ def install_selected(
             installed = getattr(error, "installed_records", [])
         records.extend(installed)
         for item in installed:
-            message(f"installed {item['id']} {item['version']}")
+            status = "incomplete requirements for" if item.get("requires_failed") else "installed"
+            message(f"{status} {item['id']} {item['version']}")
     return records
 
 

@@ -31,8 +31,11 @@ else `fontlab.flPreferences().dataPathDefault`, else
 and open it in FontLab 9 (File > Open). It installs the
 compatible PyPI wheel with SHA-256 verification, including distribution metadata
 and its licence. An adjacent `dist/` wheel or a sibling
-`../fontlab-python-instamix/dist/` wheel works offline; keep only the intended
-wheel there. Source-only sibling copies now require `uv build` first. This avoids
+`../fontlab-python-instamix/dist/` wheel works offline. The installer deduplicates
+paths and selects the newest local version at or above its minimum, using numeric
+release, prerelease and local-build ordering. Different bytes for the same selected
+version are refused; keep the intended build. Local wheels below the minimum are
+refused with instructions rather than silently installing an obsolete provider. Source-only sibling copies now require `uv build` first. This avoids
 inventing release metadata or dropping its licence. Download, validation or
 replacement failures restore the previous package and metadata, including links.
 
@@ -56,6 +59,22 @@ im.uninstall("com.example.hello")
 
 These calls use the data folder resolved above. Pass `data=Path("/scratch/FontLab 9")`
 to any of them to use an explicit folder (import `Path` from `pathlib`).
+
+## Existing installation conflicts
+
+A receipt for a symlink does not authorize replacing a real directory now found
+there. Instamix reports these conflicts before changing a tracked project's files
+or installing its sibling dependencies; changed and unrecorded content is kept.
+Move each reported conflict to a separate backup outside the install destinations,
+rerun the installer, then compare and recover your files. Do not delete conflicts
+or remove ownership receipts to force an overwrite.
+
+If a later dependency or bundled extension fails, the exception's
+`installed_records` lists the changes already committed. The CLI and regenerated
+installer stubs print these results and the failure; missing requirements are
+labelled incomplete. Direct API calls still raise and the CLI exits nonzero.
+On a first install, dependencies can be committed before an unrecorded conflict
+in the requested project is discovered. No automatic backup or adoption occurs.
 
 ## Legacy project upgrades
 

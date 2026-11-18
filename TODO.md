@@ -4,6 +4,10 @@ this_file: TODO.md
 
 # Remaining Issue 256 work
 
+- [ ] Integrate and release reviewed Issue 271 conflict reporting and local wheel selection; regenerate maintained consumer installer stubs.
+- [ ] Qualify Issue 271 in the serialized native lane on macOS and Windows after its required guard is available; keep owner files and prior holds intact.
+
+
 - [ ] Integrate and release the independently reviewed exact-canonical shared site-packages reuse; keep owner recovery and consumer execution held, and qualify native/Windows behavior separately.
 
 - [ ] Qualify regenerated consumer templates against the released 1.0.10 entry-context guard without lifting the existing execution or owner-recovery holds.

@@ -4,6 +4,15 @@ this_file: fontlab-python-instamix/PLAN.md
 
 # fontlab-python-instamix plan (issue 256)
 
+## Issue 271 remaining qualification
+
+Independently review and integrate the conflict diagnostics, partial-result
+reporting and local wheel selection. Regenerate maintained consumer stubs so
+the new capability guard and entry-point reporting reach their installers.
+Qualify released artifacts and admitted native/Windows installation separately;
+owner files remain untouched and automatic conflict repair is outside this change.
+
+
 ## Existing shared-package venv qualification
 
 Integrate the independently reviewed exact-canonical shared site-packages reuse

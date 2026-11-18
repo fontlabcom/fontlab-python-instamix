@@ -219,6 +219,9 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("--bridge requires --remote")
         return args.func(args)
     except (OSError, ValueError, RuntimeError) as error:
+        for record in getattr(error, "installed_records", []):
+            status = "incomplete requirements for" if record.get("requires_failed") else "installed"
+            print(f"{status} {record['id']} {record['version']} (before failure)")
         print(f"fontlab-instamix: {error}", file=sys.stderr)
         return 1
 

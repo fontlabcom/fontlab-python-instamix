@@ -22,7 +22,7 @@ def wheel(gui="def message(text):\n    print('fixture GUI: ' + text)\n"):
             "fontlab_instamix/__init__.py": "VALUE = 123\n",
             "fontlab_instamix/legacy.py": "",
             "fontlab_instamix/bootstrap.py": "def _legacy_rollback(*args): pass\n",
-            "fontlab_instamix/extension.py": "def preflight_plugin_migration(*args): pass\n",
+            "fontlab_instamix/extension.py": "def preflight_plugin_migration(*args): pass\ndef preflight_destinations(*args): pass\n",
             "fontlab_instamix/gui.py": gui,
             INFO + "/METADATA": "Name: fontlab-python-instamix\nVersion: 1.2.3\n",
             INFO + "/WHEEL": "Wheel-Version: 1.0\n",
@@ -288,7 +288,7 @@ def test_runtime_without_legacy_transaction_requires_replacement(tmp_path, monke
     ns = namespace(tmp_path, monkeypatch)
     def imported(name):
         if name.endswith(".extension"):
-            return SimpleNamespace(preflight_plugin_migration=lambda *args: None)
+            return SimpleNamespace(preflight_plugin_migration=lambda *args: None, preflight_destinations=lambda *args: None)
         return SimpleNamespace(message=lambda text: None, install_project=lambda path: None)
     ns["importlib"] = SimpleNamespace(import_module=imported, invalidate_caches=lambda: None)
     def unavailable(target):

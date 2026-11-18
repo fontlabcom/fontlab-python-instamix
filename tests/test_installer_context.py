@@ -27,7 +27,7 @@ def test_installer_entry_checks_context_before_ready_provider(tmp_path, monkeypa
     monkeypatch.setitem(sys.modules, "fontlab_instamix", package)
     for name, attrs in {
         "legacy": {},
-        "extension": {"preflight_plugin_migration": lambda: None},
+        "extension": {"preflight_plugin_migration": lambda: None, "preflight_destinations": lambda: None},
         "bootstrap": {"_legacy_rollback": lambda: None, "install_project": install_project},
         "gui": {"message": lambda text: calls.append("message")},
     }.items():

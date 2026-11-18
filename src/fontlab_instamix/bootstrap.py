@@ -318,25 +318,32 @@ def install_project(
     data_manifest = manifest_data(project)
     info = manifest.parse(data_manifest)
     pairs = extension.plan(project.root, info, project.id, data)
-    extension.preflight_plugin_migration(data, pairs, ledger.read(data, project.id))
+    previous = ledger.read(data, project.id)
+    extension.preflight_plugin_migration(data, pairs, previous)
+    if previous:
+        extension.preflight_destinations(data, pairs, previous)
     records: list[dict] = []
     siblings, specs = sibling_dependencies(project)
-    for sibling in siblings:
-        records += install_project(
-            sibling, data, copy=copy, requirements=requirements, _seen=seen
-        )
-    data_manifest["python"]["requires"] = specs
-    records.append(_install_checkout(project, data_manifest, data, copy, requirements))
-    if project.extensions and (project.root / project.extensions).is_dir():
-        for folder in sorted((project.root / project.extensions).rglob("*")):
-            nested = any(
-                extension.is_ext(part)
-                for part in folder.relative_to(project.root).parts[:-1]
+    try:
+        for sibling in siblings:
+            records += install_project(
+                sibling, data, copy=copy, requirements=requirements, _seen=seen
             )
-            if folder.is_dir() and extension.is_ext(folder.name) and not nested:
-                records += extension.install(
-                    folder, data, copy=copy, requirements=requirements
+        data_manifest["python"]["requires"] = specs
+        records.append(_install_checkout(project, data_manifest, data, copy, requirements))
+        if project.extensions and (project.root / project.extensions).is_dir():
+            for folder in sorted((project.root / project.extensions).rglob("*")):
+                nested = any(
+                    extension.is_ext(part)
+                    for part in folder.relative_to(project.root).parts[:-1]
                 )
+                if folder.is_dir() and extension.is_ext(folder.name) and not nested:
+                    records += extension.install(
+                        folder, data, copy=copy, requirements=requirements
+                    )
+    except Exception as error:
+        error.installed_records = records + getattr(error, "installed_records", [])
+        raise
     return records
 
 
@@ -379,9 +386,13 @@ def _install_checkout(
                     fields={"init_script": True} if project.init_script else None,
                 ),
             )
-            if project.init_script:
-                initscript.update(data)
-            launchers.write_list(data)
+            try:
+                if project.init_script:
+                    initscript.update(data)
+                launchers.write_list(data)
+            except Exception as error:
+                error.installed_records = getattr(error, "installed_records", []) + [record]
+                raise
     return record
 
 

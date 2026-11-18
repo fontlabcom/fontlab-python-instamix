@@ -4,6 +4,28 @@ this_file: CHANGELOG.md
 
 # Changelog
 
+## 2026-11-18 — Issue 271 installer recovery guidance and wheel selection
+
+- Preserve and explain changed/unrecorded install destinations before replacing
+  tracked files; distinguish a recorded link from an actual directory and give
+  backup-and-retry instructions. Keep case-only plugin parent aliases working.
+- Preserve committed dependency/extension records across recursive failures.
+  CLI and generated stubs report partial results, mark failed requirements
+  incomplete and retain API exceptions/nonzero CLI status. Stubs require the new
+  conflict-preflight capability before reusing an installed provider.
+- Deduplicate local wheel paths and select the newest eligible project version
+  numerically. Reject conflicting bytes for the same selected version and
+  filename/metadata disagreement while retaining existing validation and rollback.
+- Verified in owned scratch data: 528 arm64 Python 3.11 tests, 90.94% combined
+  statement/branch coverage across complete changed production modules, scoped
+  lint, strict docs build, 36 docs tests and wheel/sdist builds. Independent
+  review approved the combined source and passed 179 focused tests.
+- Graph analysis reports critical risk across shared installation flows. Reindexing
+  and rerunning change analysis retains process-extraction limits; structural
+  caller checks and independent review supplement this incomplete graph evidence.
+  Native checks, release and consumer rollout remain separate gates.
+
+
 ## 2026-11-17 — Downloads work when FontLab's Python has no root certificates (Issue 259 follow-ups)
 
 FontLab 9 for macOS ships a Python with no root certificates, so every HTTPS
