@@ -228,3 +228,11 @@ src/fontlab_instamix/__version__.py
 .omc/
 .superpowers-*.md
 uv.lock
+
+# Python and macOS (pypitrust)
+*.py[cod]
+.venv/
+
+# Python and macOS (pypitrust)
+__version__.py
+_version.py
