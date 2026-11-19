@@ -489,6 +489,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Command line">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remote-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -604,6 +621,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Command line">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remote-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -731,6 +765,22 @@
 </tbody>
 </table>
 <p>Instamix runs uv as a separate program. It never runs <code>sys.executable</code>, which inside FontLab is FontLab itself.</p>
+<h3 id="remote-commands">Remote commands</h3>
+<p>Install with <code>uv tool install --upgrade 'fontlab-python-instamix[remote]'</code>, then run
+<code>fontlab-instamix --remote env</code>. Use a numbered Remopy release, 2.0.13 or later.
+Local build labels on those releases work too. Prereleases, development builds
+and unrecognized versions are refused.
+Use <code>--remote</code> with <code>env</code>, <code>pkg</code>, <code>ext</code> or <code>venv</code>. Put <code>--bridge PATH</code> before the
+command to select a specific Remopy bridge. Setup follows a bundled bridge to
+its FontLab app, including apps in the macOS user Applications folder.
+With an external bridge wrapper, setup uses the default installation or the
+user's Applications folder on macOS if the system installation is absent.
+Run extension hooks inside FontLab.</p>
+<p>Remopy opens a setup <code>.vfpy</code> in FontLab before connecting to MCP. The script
+enables external MCP and turns on Hide warning dialogs. Both preferences
+persist. Installation starts after Remopy confirms the script ran, the tool
+catalogue responds and Instamix verifies the host data folder and shared access.
+After a setup timeout, inspect the reported files before trying again.</p>
 <h2 id="python-api">Python API</h2>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">fontlab_instamix</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">im</span>
 <span class="n">im</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>           <span class="c1"># a .fontlabext folder or .fontlabextz zip</span>
