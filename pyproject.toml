@@ -16,6 +16,7 @@ Repository = "https://github.com/fontlabcom/fontlab-python-instamix"
 [project.scripts]
 fontlab-instamix = "fontlab_instamix.cli:main"
 [project.optional-dependencies]
+remote = ["fontlab-remopy>=2.0.13"]
 test = ["pytest>=8"]
 [tool.hatch.version]
 source = "vcs"

@@ -96,9 +96,9 @@ refreshes import caches. It does not infer distribution names from import names
 or reload modules already imported. `im.install` continues to install extensions.
 
 Package installation creates or verifies `<data>/.venv`, using the embedded
-Python version and architecture inside FontLab. Standalone commands default to
-FontLab 9's Python 3.11 and the current OS/architecture; they do not discover a
-remote FontLab yet. A qualified uv Python request prevents accidental Intel
+Python version and architecture inside FontLab. Terminal commands without
+`--remote` default to FontLab 9's Python 3.11 and the current OS and architecture.
+A qualified uv Python request prevents accidental Intel
 selection on Apple Silicon. uv is kept in `<data>/python/uv/`.
 
 New venvs read `<data>/python/<version>/site-packages` through a managed
@@ -223,13 +223,30 @@ It matches the legacy `install.vfpy`:
 
 Apache-2.0. `platformdirs.py` vendors part of platformdirs (MIT, notice kept).
 
-## Target the running FontLab from a terminal
+## Target FontLab from a terminal
 
-Install optional `fontlab-remopy` in the external CLI Python environment, then use
-`fontlab-instamix --remote env`, `--remote pkg install uharfbuzz`,
+Install the remote extra in the external CLI environment:
+
+```sh
+uv tool install --upgrade 'fontlab-python-instamix[remote]'
+```
+
+The extra requires a numbered Remopy release, 2.0.13 or later. Local build labels
+on those releases work too. Use a numbered release if the CLI rejects a
+prerelease, development or unrecognized version. Run `fontlab-instamix --remote env`,
+`--remote pkg install uharfbuzz`,
 `--remote pkg list`, `--remote pkg uninstall NAME`, `--remote ext install PATH`,
 `--remote ext list`, `--remote ext uninstall ID`, or `--remote venv`.
 `--remote --bridge /path/to/executable` selects one Remopy bridge executable.
+For a bundled bridge, setup opens its FontLab app. With an external bridge
+wrapper, setup uses the default installation or the user's Applications folder
+on macOS if the system installation is absent.
+Remopy opens a setup `.vfpy` in FontLab before the first MCP connection. The
+script enables external MCP and turns on Hide warning dialogs. Both preferences
+persist. Instamix waits for Remopy to confirm the script ran and the bridge can
+read FontLab's tool catalogue before starting the requested command. If readiness
+fails, inspect the reported setup files before trying again.
+
 The host supplies its Python version, architecture and data folder. A conflicting
 `--data-dir` is refused; `FONTLAB_DATA_DIR` does not override the discovered host.
 

@@ -16,8 +16,8 @@ this_file: TODO.md
 
 - [ ] Qualify updated consumer stubs before rollout; independent 1.0.9 release review and all six released-wheel whole-tree legacy-preservation fixtures pass.
 
-- [ ] Verify the implemented remote CLI against live FontLab: nonce, owned package, standalone and embedded imports; qualify Windows runtime separately.
-- [ ] Qualify the Wine/CrossOver providers and CLI routing released on GitHub in Remopy 2.0.7; verify runtime execution and remote hook submission. Resolve the separate Remopy PyPI publisher failure before claiming PyPI delivery.
+- [ ] Verify the script-first remote CLI against live FontLab, including setup preferences, catalogue, nonce, owned package, standalone and embedded imports. Qualify Windows separately.
+- [ ] Qualify Wine/CrossOver runtime execution and remote hook submission for the providers and CLI routing released on GitHub in Remopy 2.0.7. PyPI publication failed for 2.0.7 and is verified for 2.0.13.
 - [ ] Qualify native PythonQt multi-file and folder selection in the serialized FontLab lane; static declarations and offline return-value tests pass.
 - [ ] Reconcile consumer installers and environment helpers, then verify macOS/native and Windows/CrossOver workflows.
 - [ ] Independently review and integrate verified changes through repository gates; retain unverified native/release outcomes.

@@ -4,6 +4,20 @@ this_file: CHANGELOG.md
 
 # Changelog
 
+## 2026-11-19 — Script-first remote startup
+
+- Remote commands share Remopy's readiness helper. One setup script enables
+  external MCP and hides warning dialogs before the bridge is used. Readiness
+  and installation use the same resolved bridge executable. Setup follows a
+  bundled bridge to its FontLab installation.
+- Setup failures stop before the host environment probe or installation. The CLI
+  prints any retained setup-file location and exits without replaying setup.
+- The optional `remote` extra requires a numbered Remopy release of 2.0.13 or
+  later. Local and embedded use keep their existing stdlib runtime.
+- Verified 547 arm64 Python 3.11 tests with 97.76% combined coverage for
+  `remote.py`, strict docs and 36 docs tests, and scratch installation of the
+  candidate wheel with and without the extra. Live FontLab acceptance is open.
+
 ## 2026-11-18 — Issue 271 installer recovery guidance and wheel selection
 
 - Preserve and explain changed/unrecorded install destinations before replacing

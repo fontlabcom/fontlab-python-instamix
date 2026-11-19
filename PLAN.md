@@ -133,9 +133,11 @@ Unknown `{var}` or `..` escape is an error. Targets: `Scripts`, `Actions`,
 
 ## CLI via remopy
 
-`fontlab-instamix` runs standalone (outside FontLab) for env/pip/ext/wrap on
-a given data folder, and `fontlab-remopy` forwards `instamix` commands into
-the running FontLab when a live answer is needed.
+Qualify `fontlab-instamix --remote` with Remopy 2.0.13 or later on a FontLab build
+whose MCP bridge can read the tool catalogue. Confirm that script-first setup
+enables MCP and hides warning dialogs before the probe, then verify host facts,
+shared access, installation and cache refresh in the serialized native lane.
+Repeat qualification for Windows separately.
 
 ## Changes in other repositories
 
@@ -180,8 +182,8 @@ environment/venv coherence, remote CLI, consumer migration and native checks.
 Use existing helpers and test each boundary before release. The current offline
 suite does not establish native or cross-platform installation acceptance.
 
-- [ ] Verify the implemented remote CLI against live FontLab: nonce, owned package, standalone and embedded imports; qualify Windows runtime separately.
-- [ ] Qualify the Wine/CrossOver providers and CLI routing released on GitHub in Remopy 2.0.7; verify runtime execution and remote hook submission. Resolve the separate Remopy PyPI publisher failure before claiming PyPI delivery.
+- [ ] Verify the script-first remote CLI against live FontLab, including setup preferences, catalogue, nonce, owned package, standalone and embedded imports. Qualify Windows separately.
+- [ ] Qualify Wine/CrossOver runtime execution and remote hook submission for the providers and CLI routing released on GitHub in Remopy 2.0.7. PyPI publication failed for 2.0.7 and is verified for 2.0.13.
 - [ ] Qualify native PythonQt multi-file and folder selection in the serialized FontLab lane; static declarations and offline return-value tests pass.
 - [ ] Reconcile consumer installers and environment helpers, then verify macOS/native and Windows/CrossOver workflows.
 - [ ] Independently review and integrate verified changes through repository gates; retain unverified native/release outcomes.

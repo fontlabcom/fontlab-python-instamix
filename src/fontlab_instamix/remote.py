@@ -10,7 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from . import env
+from . import env, markers
 
 PROBE = """
 import platform, sys
@@ -78,6 +78,29 @@ def shared_path(client, data: Path) -> None:
         marker.unlink()
 
 
+def _startup_app(command: str, default: Path) -> Path:
+    """Find the native installation associated with a bundled bridge."""
+    folder = Path(command).resolve().parent
+    if sys.platform == "darwin":
+        contents = folder.parent
+        bundle = contents.parent
+        if (folder.name, contents.name, bundle.suffix.lower()) == (
+            "MacOS",
+            "Contents",
+            ".app",
+        ):
+            return bundle
+        if not default.is_dir():
+            user_app = Path.home() / "Applications" / default.name
+            if user_app.is_dir():
+                return user_app
+    elif sys.platform == "win32":
+        adjacent = folder / default.name
+        if adjacent.is_file():
+            return adjacent
+    return default
+
+
 def execute(args) -> int:
     """Route the supported CLI commands using validated host facts."""
     if args.command not in ("env", "pkg", "ext", "venv"):
@@ -87,13 +110,36 @@ def execute(args) -> int:
             "--remote --run-hooks is unsupported: hooks need FontLab execution context; submit them inside FontLab separately"
         )
     try:
-        from fontlab_remopy import FontLab
-    except ImportError as error:
+        from importlib.metadata import version
+
+        # shortcut: numbered releases with local labels, use PEP 440 if Remopy expands its release scheme.
+        installed = version("fontlab-remopy") or ""
+        release = markers._version(installed.partition("+")[0])
+        if release is None or release < (2, 0, 13):
+            raise ValueError(
+                "Remopy does not identify a supported script-first release"
+            )
+        from fontlab_remopy import FontLab, ensure_ready, find_bridge
+        from fontlab_remopy.platforms import DEFAULT_APP
+    except (ImportError, ValueError) as error:
         raise RuntimeError(
-            "Remote CLI requires fontlab-remopy in this external Python environment"
+            "Remote CLI requires fontlab-remopy>=2.0.13 as a numbered release. "
+            "Install or upgrade 'fontlab-python-instamix[remote]' in this external Python environment."
         ) from error
     try:
-        with FontLab(command=args.bridge) as client:
+        command = find_bridge(args.bridge)
+        if command is None:
+            raise FileNotFoundError("No executable FontLab MCP bridge found")
+        ensure_ready(app=_startup_app(command, DEFAULT_APP), command=command)
+    except Exception as error:  # noqa: BLE001 - report failures from optional transports
+        details = "\n".join(
+            [str(error) or type(error).__name__, *getattr(error, "__notes__", ())]
+        )
+        raise RuntimeError(
+            f"FontLab setup failed; no automatic retry. {details}"
+        ) from error
+    try:
+        with FontLab(command=command) as client:
             value, target = facts(client.run(PROBE).value)
             if args.data_dir and Path(args.data_dir).expanduser() != Path(
                 value["data_dir"]

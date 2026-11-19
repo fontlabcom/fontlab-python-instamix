@@ -4,6 +4,44 @@ this_file: WORK.md
 
 # Issue 256 implementation review
 
+## 2026-11-19 — Remote setup before installation
+
+Remote CLI validation checks the supported command and hook options before
+loading Remopy. The dispatcher checks the installed release, resolves the bridge
+with Remopy's public discovery function and calls `ensure_ready` before opening
+the client. Remopy 2.0.12 exports that helper but probes before the setup script.
+The 2.0.13 minimum protects the script-first contract. Numbered local builds
+are accepted. Prereleases, development builds and unknown versions are refused.
+No mandatory dependency changed.
+
+The selected bridge determines which FontLab app receives the setup script.
+On macOS, a bundled bridge identifies its app after resolving symlinks.
+On Windows, the adjacent FontLab executable is used when present. An external
+wrapper uses the default app, with a user Applications fallback on macOS.
+
+Setup timeout reports include any Remopy notes naming the retained setup files.
+The CLI exits before the remote environment probe or any local install work.
+Existing host fact validation, shared nonce checks and completed-install reporting
+after a cache-refresh failure remain in use.
+
+Baseline 528 tests passed in 7.97s. The first readiness regressions exposed nine
+failures. All seven application-selection cases first failed against the
+original review candidate and then passed. The complete source passed
+547 tests in 9.28s on arm64 Python 3.11.14, with 97.76% combined statement/branch
+coverage for the complete changed module
+(80% gate). Scoped Ruff and whitespace checks passed. Strict docs and 36 docs
+tests passed using the existing 31 locked packages. Candidate wheel and sdist
+built successfully. Scratch wheel installation verified the license, RECORD,
+local CLI and optional dependency, including installation of Remopy 2.0.13.
+
+Pre-edit graph impact for `execute` is LOW and identifies `cli.main` as its only
+direct caller. Structural search confirms that caller. Reindexed change analysis
+is LOW with zero mapped flows. The analyzer reports 120 untraced entry points,
+so its flow coverage is incomplete.
+
+Source is ready for independent review and delivery. End-to-end native
+qualification needs a FontLab bridge that can return the MCP catalogue.
+
 ## 2026-11-18 — Issue 271 installer conflicts and local wheels
 
 Modern receipt conflicts are checked before tracked project files or sibling

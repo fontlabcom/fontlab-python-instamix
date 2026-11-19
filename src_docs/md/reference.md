@@ -25,6 +25,25 @@ Run `uvx fontlab-python-instamix`, `fontlab-instamix` after installing, or `pyth
 
 Instamix runs uv as a separate program. It never runs `sys.executable`, which inside FontLab is FontLab itself.
 
+### Remote commands
+
+Install with `uv tool install --upgrade 'fontlab-python-instamix[remote]'`, then run
+`fontlab-instamix --remote env`. Use a numbered Remopy release, 2.0.13 or later.
+Local build labels on those releases work too. Prereleases, development builds
+and unrecognized versions are refused.
+Use `--remote` with `env`, `pkg`, `ext` or `venv`. Put `--bridge PATH` before the
+command to select a specific Remopy bridge. Setup follows a bundled bridge to
+its FontLab app, including apps in the macOS user Applications folder.
+With an external bridge wrapper, setup uses the default installation or the
+user's Applications folder on macOS if the system installation is absent.
+Run extension hooks inside FontLab.
+
+Remopy opens a setup `.vfpy` in FontLab before connecting to MCP. The script
+enables external MCP and turns on Hide warning dialogs. Both preferences
+persist. Installation starts after Remopy confirms the script ran, the tool
+catalogue responds and Instamix verifies the host data folder and shared access.
+After a setup timeout, inspect the reported files before trying again.
+
 ## Python API
 
 ```python
