@@ -4,6 +4,14 @@ this_file: WORK.md
 
 # Issue 256 implementation review
 
+## 2026-11-23 — Documentation theme
+
+The strict Python 3.13 build now uses fly-january 0.1.1 with FontLab chrome.
+All nine generated HTML pages contain one Instamix menu, one FontLab footer
+and three versioned Fly asset references. The asset manifest verifies 14
+retained files and the removal of 35 unused search helpers. All 36 docs tests
+and 547 arm64 Python 3.11 runtime tests passed.
+
 ## 2026-11-19 — Remote setup before installation
 
 Remote CLI validation checks the supported command and hook options before

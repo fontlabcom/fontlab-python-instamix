@@ -221,6 +221,17 @@ It matches the legacy `install.vfpy`:
 ./publish.sh     # tagged, clean tree only
 ```
 
+The documentation site uses fly-january 0.1.1 with the FontLab menu and footer.
+To rebuild `docs/` and check the generated site:
+
+```sh
+uv venv --python 3.13 .docs-venv
+. .docs-venv/bin/activate
+uv pip install --require-hashes -r src_docs/requirements.txt
+sh src_docs/build.sh
+python -m unittest discover -s tests_docs -v
+```
+
 Apache-2.0. `platformdirs.py` vendors part of platformdirs (MIT, notice kept).
 
 ## Target FontLab from a terminal

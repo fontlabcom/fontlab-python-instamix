@@ -4,6 +4,10 @@ this_file: CHANGELOG.md
 
 # Changelog
 
+## Unreleased
+
+- Site now uses the fly-january 0.1.1 theme (chrome: fontlab).
+
 ## 2026-11-19 — Script-first remote startup
 
 - Remote commands share Remopy's readiness helper. One setup script enables

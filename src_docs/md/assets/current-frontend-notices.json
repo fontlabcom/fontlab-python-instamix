@@ -332,6 +332,18 @@
           "sha256": "50ab8dd54680d3473f649c9db86fece88434d097c7834475c1c72d2f8c429215"
         }
       ]
+    },
+    {
+      "name": "fly-january",
+      "version": "0.1.1",
+      "source_url": "https://pypi.org/project/fly-january/0.1.1/",
+      "notices": [
+        {
+          "path": "assets/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "scope": "Exact Apache 2.0 licence shipped in the theme wheel"
+        }
+      ]
     }
   ],
   "source_maps": [
@@ -2039,7 +2051,7 @@
       "css_header_attributions": {
         "--md-version-icon": {
           "asset": "assets/stylesheets/main.314bbef5.min.css",
-          "asset_sha256": "314bbef5bf9ab3a776c5b1bb3ae42f0db5de636bfe2b1ddd6e67de3d35384d8b",
+          "asset_sha256": "a9d6426d6198be70d52a93a4591704bf9a353b01c5a06a1ff85415b7eeb30d61",
           "installed_icon": "fontawesome/solid/caret-down.svg",
           "exact_path_tuple_match": true,
           "component": "@fortawesome/fontawesome-free",
@@ -2058,8 +2070,10 @@
     "limit": "Ordered path d tuples are not all SVG geometry. Forty-three tuples match installed icons, including the header-attributed Font Awesome version caret. The two remaining optimized Lucide tuples are bound by exact SCSS source references; no whole-geometry equivalence is claimed."
   },
   "external_services": {
-    "fltheme26": "HTTPS includes use the external FontLab service; its implementation bytes are not copied into this payload. Retained notices do not freeze later service responses.",
-    "Google_Fonts": "The theme may request fonts from external HTTPS services. No local font binary is redistributed; retained reference notices do not freeze later service responses."
+    "FontLab": "The FontLab menu and footer use the hosted FontLab chrome script.",
+    "Google_Fonts": "Google Fonts hosts Material Symbols and fonts used by MaterialX and the FontLab menu.",
+    "Adobe_Fonts": "Adobe Fonts hosts the default Fly font kits.",
+    "PhotoSwipe": "The theme requests PhotoSwipe 5.4.4 CSS from jsDelivr. Its scripts load on demand for lightbox images."
   },
   "language_helpers": "The exact35 lunr-languages1.20.0 assets, including Wordcut/TinySegmenter, are omitted under the guarded English-only manifest, not relicensed or represented as shipped."
 }
