@@ -221,7 +221,7 @@ It matches the legacy `install.vfpy`:
 ./publish.sh     # tagged, clean tree only
 ```
 
-The documentation site uses fly-january 0.1.1 with the FontLab menu and footer.
+The documentation site uses fly-january 0.2.1 with the FontLab menu and footer.
 To rebuild `docs/` and check the generated site:
 
 ```sh

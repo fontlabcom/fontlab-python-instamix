@@ -12,7 +12,7 @@ The repository Apache 2.0 licence and each retained component notice apply to th
 
 ## Current English browser payload
 
-The [browser-component record](assets/current-frontend-notices.json) records the fly-january 0.1.1 theme licence and the upstream notices, package archives and source maps for MaterialX 10.1.8. Product terms above remain unchanged.
+Fly-january 0.2.1 ships the same licence bytes as the earlier release catalogued in the [browser-component record](assets/current-frontend-notices.json). That record also lists the upstream notices, package archives and source maps for MaterialX 10.1.8.
 
 The [English-only omission manifest](assets/english-search-omissions.json) binds all 35 unused lunr-languages 1.20.0 helpers, including Wordcut and TinySegmenter. The build rejects theme/search-language, corpus, vendor-set/hash and local HTML-reference drift before removing them. It binds the five local fly-january assets, seven unchanged MaterialX files and the two MaterialX stylesheets rescaled by fly-january. Historical complete outputs remain recovery evidence; omitted helpers are not represented as currently distributed or relicensed.
 
@@ -39,7 +39,7 @@ FontLab hosts the menu and footer script. Google Fonts and Adobe Fonts supply ex
 | select | 1.1.2 | [readme.md.txt](assets/current-frontend/select/readme.md.txt) |
 | good-listener | 1.2.2 | [readme.md.txt](assets/current-frontend/good-listener/readme.md.txt) |
 | delegate | 3.2.0 | [readme.md.txt](assets/current-frontend/delegate/readme.md.txt) |
-| fly-january | 0.1.1 | [Apache 2.0 licence](assets/LICENSE) |
+| fly-january | 0.2.1 | [Apache 2.0 licence](assets/LICENSE) |
 | MaterialX10.1.8 | retained terms | [materialx-10.1.8-LICENSE.txt](assets/current-frontend/retained/materialx-10.1.8-LICENSE.txt) |
 | Retained corresponding terms | retained terms | [apache-2.0.txt.txt](assets/current-frontend/retained/apache-2.0.txt.txt) |
 | Retained corresponding terms | retained terms | [cc-by-4.0.txt.txt](assets/current-frontend/retained/cc-by-4.0.txt.txt) |

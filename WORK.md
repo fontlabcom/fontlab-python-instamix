@@ -6,7 +6,7 @@ this_file: WORK.md
 
 ## 2026-11-23 — Documentation theme
 
-The strict Python 3.13 build now uses fly-january 0.1.1 with FontLab chrome.
+The strict Python 3.13 build now uses fly-january 0.2.1 with FontLab chrome.
 All nine generated HTML pages contain one Instamix menu, one FontLab footer
 and three versioned Fly asset references. The asset manifest verifies 14
 retained files and the removal of 35 unused search helpers. All 36 docs tests
