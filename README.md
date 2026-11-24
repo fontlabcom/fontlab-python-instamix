@@ -225,7 +225,7 @@ It runs `./release.sh` to prepare the tag, push it and build locally, then
 dispatches `release.yml` for the tagged build, GitHub release and PyPI upload
 through Trusted Publishing.
 
-The documentation site uses fly-january 0.2.1 with the FontLab menu and footer.
+The documentation site uses fly-january 0.3.0 or later with the FontLab menu and footer.
 To rebuild `docs/` and check the generated site:
 
 ```sh

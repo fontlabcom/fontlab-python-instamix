@@ -39,7 +39,7 @@ FontLab hosts the menu and footer script. Google Fonts and Adobe Fonts supply ex
 | select | 1.1.2 | [readme.md.txt](assets/current-frontend/select/readme.md.txt) |
 | good-listener | 1.2.2 | [readme.md.txt](assets/current-frontend/good-listener/readme.md.txt) |
 | delegate | 3.2.0 | [readme.md.txt](assets/current-frontend/delegate/readme.md.txt) |
-| fly-january | 0.2.1 | [Apache 2.0 licence](assets/LICENSE) |
+| fly-january | 0.3.0 or later | [Apache 2.0 licence](assets/LICENSE) |
 | MaterialX10.1.8 | retained terms | [materialx-10.1.8-LICENSE.txt](assets/current-frontend/retained/materialx-10.1.8-LICENSE.txt) |
 | Retained corresponding terms | retained terms | [apache-2.0.txt.txt](assets/current-frontend/retained/apache-2.0.txt.txt) |
 | Retained corresponding terms | retained terms | [cc-by-4.0.txt.txt](assets/current-frontend/retained/cc-by-4.0.txt.txt) |

@@ -335,8 +335,8 @@
     },
     {
       "name": "fly-january",
-      "version": "0.1.1",
-      "source_url": "https://pypi.org/project/fly-january/0.1.1/",
+      "version": "0.3.0",
+      "source_url": "https://pypi.org/project/fly-january/0.3.0/",
       "notices": [
         {
           "path": "assets/LICENSE",

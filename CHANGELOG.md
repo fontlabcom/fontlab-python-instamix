@@ -6,6 +6,7 @@ this_file: CHANGELOG.md
 
 ## Unreleased
 
+- The documentation theme now requires fly-january 0.3.0 or later.
 - Site now uses the fly-january 0.2.1 theme (chrome: fontlab).
 - Pin the PyPI Trusted Publishing action and check GitHub CLI authentication before release preparation. The PyPI project owner must configure or confirm the trusted publisher for `fontlabcom/fontlab-python-instamix`, workflow `release.yml` and environment `pypi`.
 - Issue 271 conflict reporting and local wheel selection shipped in 1.0.18 (`0a90d01`) after 179 focused review tests. All 13 maintained consumer release tags carry the byte-matching installer, including Plugmix 1.1.23.
