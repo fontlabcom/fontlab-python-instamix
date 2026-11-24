@@ -6,6 +6,7 @@ this_file: CHANGELOG.md
 
 ## Unreleased
 
+- The documentation uses fly-january 0.4.0 or later (remote theme assets).
 - The documentation theme now requires fly-january 0.3.0 or later.
 - Site now uses the fly-january 0.2.1 theme (chrome: fontlab).
 - Pin the PyPI Trusted Publishing action and check GitHub CLI authentication before release preparation. The PyPI project owner must configure or confirm the trusted publisher for `fontlabcom/fontlab-python-instamix`, workflow `release.yml` and environment `pypi`.

@@ -22,7 +22,7 @@ complete changed source. Host checks must explicitly select arm64 Python 3.11
 on Apple Silicon; a version-only request can choose x86_64. Keep the unchanged
 80% coverage gate for complete changed production modules. Build wheel and sdist
 with `uv build`; verify installed metadata, licences and import origins separately.
-Docs use fly-january 0.3.0 or later with FontLab chrome in `src_docs/mkdocs.yml`.
+Docs use fly-january 0.4.0 or later (remote theme assets) with FontLab chrome in `src_docs/mkdocs.yml`.
 Install the hashed `src_docs/requirements.txt` in a Python 3.13 environment,
 then run `sh src_docs/build.sh` and `python -m unittest discover -s tests_docs -v`.
 

@@ -75,9 +75,8 @@ class SiteTests(unittest.TestCase):
                 self.assertEqual(menus[0]['mobile-menu'], 'materialx')
                 self.assertEqual(menus[0]['mobile-search'], 'materialx')
                 self.assertEqual(sum(tag == 'fontlab-footer' for tag, _ in page.tags), 1)
-                assets = [urlsplit(link).path for link in page.links]
                 for filename in ('fly.css', 'fly-bridge.js', 'fly.js'):
-                    self.assertEqual(sum(path.endswith(f'assets/fly/{filename}') for path in assets), 1)
+                    self.assertEqual(page.links.count(f'https://fontlab.dev/fontlab-www-docstheme/fly/latest/{filename}'), 1)
                 self.assertEqual([attrs.get('data-md-color-scheme') for tag, attrs in page.tags if tag == 'body'], ['default'])
                 search = [attrs for tag, attrs in page.tags if attrs.get('data-md-component') == 'search-query']
                 self.assertEqual(len(search), 1)

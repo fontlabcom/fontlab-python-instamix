@@ -34,7 +34,7 @@ class EnglishSearchTests(unittest.TestCase):
         self.index = {'config': {'lang': ['en']}, 'docs': [{'location': 'index.html', 'title': 'Glyph tools', 'text': 'Meaningful complete search fixture'}]}
         (self.site / 'search/search_index.json').write_text(json.dumps(self.index))
         (self.site / 'index.html').write_text('<html><script src="assets/javascripts/bundle.fc193f93.min.js"></script></html>')
-        self.config = {'theme': {'language': 'en'}, 'plugins': {'fly-january/search': SimpleNamespace(config={'lang': ['en']})}, 'docs_dir': str(ROOT / 'src_docs/md'), 'site_dir': str(self.site)}
+        self.config = {'theme': {'language': 'en'}, 'plugins': {'fly-january-remote/search': SimpleNamespace(config={'lang': ['en']})}, 'docs_dir': str(ROOT / 'src_docs/md'), 'site_dir': str(self.site)}
 
     def test_exact_english_payload_omits_only_all_35_unused_helpers(self):
         self.assertIs(english_search.on_config(self.config), self.config)
@@ -49,7 +49,7 @@ class EnglishSearchTests(unittest.TestCase):
     def test_non_english_theme_or_search_configuration_is_rejected(self):
         for languages, theme in [(['fr'], 'en'), (['en', 'fr'], 'en'), (['en'], 'fr'), ([], 'en')]:
             with self.subTest(languages=languages, theme=theme):
-                self.config['plugins']['fly-january/search'].config['lang'] = languages
+                self.config['plugins']['fly-january-remote/search'].config['lang'] = languages
                 self.config['theme']['language'] = theme
                 with self.assertRaisesRegex(ValueError, 'English'):
                     english_search.on_config(self.config)
@@ -67,7 +67,7 @@ class EnglishSearchTests(unittest.TestCase):
             english_search.on_post_build(self.config)
 
     def test_changed_helper_or_retained_vendor_bytes_are_rejected_before_deletion(self):
-        for path in ['assets/javascripts/lunr/wordcut.js', 'assets/javascripts/bundle.fc193f93.min.js', 'assets/fly/fly.js', 'assets/stylesheets/main.314bbef5.min.css']:
+        for path in ['assets/javascripts/lunr/wordcut.js', 'assets/javascripts/bundle.fc193f93.min.js', 'assets/stylesheets/main.314bbef5.min.css']:
             with self.subTest(path=path):
                 target = self.site / path
                 before = target.read_bytes()
@@ -104,7 +104,7 @@ class EnglishSearchTests(unittest.TestCase):
         from properdocs.config import load_config
         config = load_config(str(ROOT / 'src_docs/mkdocs.yml'))
         self.assertIs(english_search.on_config(config), config)
-        self.assertEqual(config['plugins']['fly-january/search'].config['lang'], ['en'])
+        self.assertEqual(config['plugins']['fly-january-remote/search'].config['lang'], ['en'])
 
     def test_manifest_count_or_helper_boundary_drift_is_rejected(self):
         policy = json.loads((ROOT / 'src_docs/md/assets/english-search-omissions.json').read_text())
