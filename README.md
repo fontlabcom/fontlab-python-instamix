@@ -218,8 +218,12 @@ It matches the legacy `install.vfpy`:
 ```sh
 ./test.sh        # requires uv and preinstalled matching CPython 3.11 for offline venv test
 ./build.sh       # wheel + sdist into dist/
-./publish.sh     # tagged, clean tree only
 ```
+
+Run `./publish.sh` from the release checkout with an authenticated GitHub CLI.
+It runs `./release.sh` to prepare the tag, push it and build locally, then
+dispatches `release.yml` for the tagged build, GitHub release and PyPI upload
+through Trusted Publishing.
 
 The documentation site uses fly-january 0.2.1 with the FontLab menu and footer.
 To rebuild `docs/` and check the generated site:

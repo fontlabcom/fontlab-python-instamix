@@ -26,6 +26,10 @@ Docs use fly-january 0.2.1 with FontLab chrome in `src_docs/mkdocs.yml`.
 Install the hashed `src_docs/requirements.txt` in a Python 3.13 environment,
 then run `sh src_docs/build.sh` and `python -m unittest discover -s tests_docs -v`.
 
+For authorized releases, `./publish.sh` dispatches `release.yml` after the local
+release build. The workflow uploads to PyPI through Trusted Publishing in the
+`pypi` environment.
+
 Installation failures must preserve existing packages and owner-modified files.
 Keep extension/library/ledger containment and explicit target propagation coherent.
 A timeout leaves process or native mutation outcomes uncertain; never replay by

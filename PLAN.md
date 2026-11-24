@@ -4,191 +4,35 @@ this_file: fontlab-python-instamix/PLAN.md
 
 # fontlab-python-instamix plan (issue 256)
 
-## Issue 271 remaining qualification
+Native checks require the approved serialized guard and owned fixtures. The
+consumer execution and owner-folder recovery holds remain in force.
 
-Independently review and integrate the conflict diagnostics, partial-result
-reporting and local wheel selection. Regenerate maintained consumer stubs so
-the new capability guard and entry-point reporting reach their installers.
-Qualify released artifacts and admitted native/Windows installation separately;
-owner files remain untouched and automatic conflict repair is outside this change.
+- **Qualify the released Issue 271 installer and updated consumer stubs on macOS and Windows in the admitted native lane.**
+  Use an owned FontLab data folder and the approved serialized guard. Confirm the installed provider version, repeat self-install with both 1.0.17 and 1.0.18 wheels available, and check that a modified destination and its receipt survive refusal. Exercise the current consumer stubs in the compatible cohort after the consumer-execution hold is lifted.
 
+- **Qualify exact-canonical shared site-packages reuse in FontLab on macOS and Windows.**
+  In an owned environment whose site-packages resolves to the canonical path, verify venv reuse and imports from standalone and embedded Python. Check that the operation preserves the existing links, files and path configuration.
 
-## Existing shared-package venv qualification
+- **Qualify the script-first remote CLI against live FontLab on macOS and Windows.**
+  Require a bridge that can return the catalogue and Remopy 2.0.13 or later. Check setup preferences before the probe, host facts, nonce access, and an owned package install. Verify post-install cache refresh and imports through both Python entry points.
 
-Integrate the independently reviewed exact-canonical shared site-packages reuse
-through ordinary hooks and exact-SHA CI/release gates.
-Keep the owner-folder recovery and consumer-execution holds unchanged; qualify
-release, native and Windows behavior separately. Do not convert existing layouts.
+- **Qualify Wine/CrossOver provider execution and remote hook submission.**
+  Verify routing in an owned bottle using the published Remopy provider. Retain unresolved submission receipts and verify their state before considering any replay.
 
-## Public download qualification
+- **Qualify native PythonQt multi-file and folder selection.**
+  In the serialized lane, check the native return values for multiple files, one folder and cancellation.
 
-Qualify API/book guide delivery against the released canonical download. Its
-1.0.10 HTTP body is independently verified; keep the API site's frozen-input,
-privacy and browser gates unchanged.
+- **Verify App and Instamix environment routing in the maintained consumer cohort on macOS and Windows/CrossOver.**
+  Check that App's native path and version attributes and Instamix's target/site API lead consumers to the intended data folder and interpreter.
 
+- **Qualify generated-file rollback on native macOS and Windows installations.**
+  In owned scratch data, induce a failed replacement and compare prior files, modes and receipt against the restored result.
 
-## Current preservation qualification
+- **Verify that the paired App loader discovers generated lowercase plugin bundles and that Plugmix installs on macOS and Windows.**
+  Use a host that naturally loads a compatible App and Plugmix cohort. Verify managed-plugin refusal and bootstrap readiness in an owned folder before checking discovery.
 
-Qualify regenerated consumer templates against the released 1.0.10 entry-context
-guard. Keep consumer execution
-and owner-folder recovery held under the existing incident review; the guard
-does not restore prior folder state. Native and Windows admission need separate
-verification.
+- **Verify Issue 259 junction repair in FontLab 9 for Windows.**
+  Use an owned existing venv whose home points to a uv minor-version junction. Verify in-place repair and imports of packages already installed in that venv.
 
-Qualify updated consumer stubs before rollout; the legacy-upgrade rollback and
-required bootstrap capability are published in 1.0.9, and all six real
-Examples/Scriptmix released-wheel preservation fixtures pass. Keep native,
-Windows, compatible provider-cohort
-and publisher administration checks separate. The published 1.0.8 provider is
-unsafe for a legacy upgrade that fails on an unowned target.
-
-Instamix installs Python packages and FontLab extensions into the FontLab 9
-user data folder. It runs inside FontLab (stdlib + PythonQt + vendored code
-only) and from a terminal through `fontlab-remopy`.
-
-## Facts from the FontLab 9 C++ source (read, not run)
-
-- Data folder (`flPreferences::dataPathDefault()`): macOS
-  `~/Library/Application Support/FontLab/FontLab 9`; Windows
-  `Documents\FontLab\FontLab 9`. Scripts menu and `sys.path` ignore the
-  Developer > DataPath override.
-- `sys.path` gets `<data>/python/3.11/site-packages` via `addSysPath`; no
-  `site.addsitedir`, so `.pth` files there are probably ignored. Instamix
-  must link package directories, not rely on `.pth`.
-- Scripts menu scans `<data>/Scripts` recursively for `*.py`/`*.vfpy` and
-  follows symlinks. Encoding/Codepage load recursively but probably do not
-  follow symlinked directories on POSIX: link files, not directories.
-- Opening a `.vfpy` runs it; `.py` only loads into the panel.
-- Windows `sys.executable` is probably the FontLab executable: never run it
-  as a subprocess.
-- No native Extensions folder exists; `Extensions/` is ours.
-
-## Package layout
-
-```
-src/fontlab_instamix/
-  __init__.py        version, public API (lazy)
-  env.py             FontLab environment: version, arch, data folder, paths
-  platformdirs.py    vendored subset (from _private/platformdirs-unified.py)
-  uv.py              locate/download uv into <data>/python/uv, run uv
-  venv.py            <data>/.venv matching FontLab Python version and arch
-  packages.py        pip install/uninstall/list into FontLab site-packages
-  manifest.py        manifest.fontlabextj parsing (dataclasses, strict)
-  dest.py            destination rule resolver (".", "{}", "dir/{}/sub", vars)
-  extension.py       install/uninstall/list .fontlabext and .fontlabextz
-  ledger.py          JSON install records + JSONL log
-  wrap.py            wrap a script or plugin draft into a .fontlabext/.fontlabextz
-  bootstrap.py       two-line installer support and self-install
-  gui.py             small PythonQt helpers (message, confirm, progress, pick file)
-  cli.py             argparse CLI: env, pip, ext, wrap, bootstrap
-install.vfpy         self-extracting installer of instamix itself
-```
-
-## Manifest (`manifest.fontlabextj`, JSON, at extension root)
-
-```json
-{
-  "id": "com.example.myext",
-  "name": "My Extension",
-  "version": "1.0.0",
-  "description": "...",
-  "min_fontlab": "9.0",
-  "python": {"requires": ["fonttools>=4"], "packages": ["src/mypkg"]},
-  "vars": {"family": "adamtrix"},
-  "install": [
-    {"from": "scripts", "to": "Scripts/{}"},
-    {"from": "encoding/*.enc", "to": "Encoding/{}"},
-    {"from": "actions/*.json", "to": "Actions/."},
-    {"from": "data", "to": "Data/{family}/"}
-  ]
-}
-```
-
-Destination rules: `.`/`./` = target root; `{}` = extension basename without
-`.fontlabext`; `dir`, `./dir/` = subfolder; `{var}` = manifest `vars` value.
-Unknown `{var}` or `..` escape is an error. Targets: `Scripts`, `Actions`,
-`Codepage`, `Data`, `Encoding`, `site-packages` (case-insensitive names).
-
-## Install flow
-
-1. `.fontlabextz`: validate member names, unzip to temp, run optional
-   `install.vfpy` or `install_<name>.fontlabext.vfpy` hook only on request.
-2. Copy each `.fontlabext` to `<data>/Extensions/Library/<id>.fontlabext`
-   (staged, replaced atomically).
-3. Link files from Library into targets (symlink on macOS; copy on Windows
-   and when symlinks fail). `python.packages` are linked into site-packages;
-   `python.requires` go through uv into site-packages.
-4. Write `<data>/Extensions/.instamix/<id>.json` record outside Library, which is only a source (every created
-   path and its hash), so uninstall removes exactly what was created.
-
-## Python packages
-
-- `uv` fetched once from GitHub releases (stdlib urllib + zip/tar, sha256 from
-  release file) into `<data>/python/uv/`.
-- `<data>/.venv` uses a qualified CPython version/OS/architecture request and a
-  bounded runtime probe. Its owned `.pth` references the canonical package
-  directory; installs use the verified interpreter and that same `--target`.
-  Actual offline arm64 Python 3.11 import works through both the venv and direct
-  canonical path. Embedded-host and Windows runtime acceptance remain open.
-
-## CLI via remopy
-
-Qualify `fontlab-instamix --remote` with Remopy 2.0.13 or later on a FontLab build
-whose MCP bridge can read the tool catalogue. Confirm that script-first setup
-enables MCP and hides warning dialogs before the probe, then verify host facts,
-shared access, installation and cache refresh in the serialized native lane.
-Repeat qualification for Windows separately.
-
-## Changes in other repositories
-
-- fontlab-remopy: `platforms/windows.py` and CrossOver launcher
-  (`wine`/`cxstart` with bottle `fontlab`), data-folder resolution for the
-  bottle, `instamix` subcommand passthrough.
-- fontlab-fontlabapp: `core/application/paths.py` and `versions.py` delegate
-  to `fontlab_instamix.env` when importable (keep fallbacks; no import cycle:
-  instamix never imports fontlabapp).
-- fontlab-python-plugmix, scriptmix, examples, pens, grablab, glyport,
-  fontport, echopy, fly, remopy, aidus-agentus: replace their copies of
-  `install.vfpy` logic with the two-line bootstrap when instamix is present,
-  keeping the standalone path. Root `install.sh` gains an instamix-first step.
-- python-docs and python-book: user guide page for instamix and the manifest.
-
-## Milestones
-
-1. Core: env, platformdirs subset, dest resolver, manifest, ledger — tests.
-2. Extensions: install/uninstall/list .fontlabext/.fontlabextz — tests with
-   fixtures in a temp data folder.
-3. Packages: uv fetch, venv, pip install/uninstall/list — tests with a fake
-   uv plus one real offline-safe smoke run.
-4. CLI, GUI helpers, wrap, bootstrap, self-installing `install.vfpy`.
-5. remopy Windows/CrossOver support and instamix passthrough.
-6. fontlabapp env delegation and other-repo installer updates.
-7. Live tests: macOS FontLab 9 and Windows FontLab 9 in CrossOver.
-8. Docs, CHANGELOG, final review, integration to main.
-
-## Known limits
-
-- `.pth`, symlinked-directory and `.vfpy`-from-argv behaviour are source
-  inferences until the live tests confirm them.
-
-## Implementation review, 2026-11-17
-
-First increment accepts a root manifest as the installation entry point, reusing
-the folder installation path and its existing basename substitution. CLI callers
-inherit it. No dependencies or new deployment mechanism are needed.
-
-Next prioritize filesystem containment and public API correctness, then target
-environment/venv coherence, remote CLI, consumer migration and native checks.
-Use existing helpers and test each boundary before release. The current offline
-suite does not establish native or cross-platform installation acceptance.
-
-- [ ] Verify the script-first remote CLI against live FontLab, including setup preferences, catalogue, nonce, owned package, standalone and embedded imports. Qualify Windows separately.
-- [ ] Qualify Wine/CrossOver runtime execution and remote hook submission for the providers and CLI routing released on GitHub in Remopy 2.0.7. PyPI publication failed for 2.0.7 and is verified for 2.0.13.
-- [ ] Qualify native PythonQt multi-file and folder selection in the serialized FontLab lane; static declarations and offline return-value tests pass.
-- [ ] Reconcile consumer installers and environment helpers, then verify macOS/native and Windows/CrossOver workflows.
-- [ ] Independently review and integrate verified changes through repository gates; retain unverified native/release outcomes.
-
-- [ ] Qualify generated-file rollback on native/Windows installations; independent 1.0.9 review and released-wheel offline failure recovery pass.
-- [ ] Verify generated lowercase plugin bundles through the paired compatible App loader; packaging and copied/linked ZIP installation pass offline.
-
-- [ ] Reconcile the Plugmix consumer with released managed-plugin refusal/bootstrap readiness, retain its separate PyPI publisher gate, and qualify native/Windows installation.
+- **Verify Issue 259's 1.0.13 minimum and released-stub upgrade in FontLab 9 for Windows.**
+  Start with an owned 1.0.12 installation. Verify that the released stub upgrades it and that the expected provider imports before installing the project.

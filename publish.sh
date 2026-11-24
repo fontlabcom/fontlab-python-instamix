@@ -13,6 +13,7 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+gh auth status --active --hostname github.com
 ./release.sh "$@"
 TAG="$(git describe --tags --exact-match --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD)"
 VER="${TAG#v}"

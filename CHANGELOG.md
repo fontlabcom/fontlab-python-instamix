@@ -7,6 +7,14 @@ this_file: CHANGELOG.md
 ## Unreleased
 
 - Site now uses the fly-january 0.2.1 theme (chrome: fontlab).
+- Pin the PyPI Trusted Publishing action and check GitHub CLI authentication before release preparation. The PyPI project owner must configure or confirm the trusted publisher for `fontlabcom/fontlab-python-instamix`, workflow `release.yml` and environment `pypi`.
+- Issue 271 conflict reporting and local wheel selection shipped in 1.0.18 (`0a90d01`) after 179 focused review tests. All 13 maintained consumer release tags carry the byte-matching installer, including Plugmix 1.1.23.
+- Exact-canonical shared site-packages reuse shipped in 1.0.11 (`d700291`). Release run 44033656685 succeeded and the wheel, sdist and arm64 installation passed independent checks.
+- The standalone entry guard shipped in 1.0.10 (`5b875f0`) and legacy rollback in 1.0.9 (`c676c7c`). All six released-wheel rollback fixtures passed, and the 13 maintained consumer release tags carry the current guarded stub.
+- The API guide and Python book passed independent live installer-link checks (API output `b5e6849`, run 44034524771, and book `6fe34d2`, Pages run 44033147454).
+- The 1.0.15 stub upgraded a simulated 1.0.12 provider in an owned macOS FontLab 9 data folder and imported the replacement (`cff90d4`, `mac_stub-3.json`).
+- Script-first remote setup shipped in 1.0.19 (`b37a352`, release run 44434718625). The GitHub and PyPI distributions matched.
+- Verified the Remopy 2.0.13 wheel and sdist on PyPI. Wine/CrossOver runtime and remote-hook checks remain open.
 
 ## 2026-11-19 — Script-first remote startup
 
